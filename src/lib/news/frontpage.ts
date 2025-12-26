@@ -156,14 +156,36 @@ async function getStoriesForCategory({
     const q = resolveCategoryQuery(entry.queryBuilder, id, baseQuery);
     if (!q) continue;
     const cacheKey = `frontpage:${entry.name}:${id}:${q}`;
-    const edition = await getCachedEdition(
+    console.info("[frontpage] selectedAdapter", {
+      category: id,
+      adapter: entry.name,
+      query: q,
       cacheKey,
-      entry.ttlMs ?? ttlMs,
-      () => entry.adapter({ q })
-    );
-    const stories = edition.sections?.[0]?.stories ?? [];
-    if (stories.length) {
-      return stories;
+    });
+    try {
+      const edition = await getCachedEdition(
+        cacheKey,
+        entry.ttlMs ?? ttlMs,
+        () => entry.adapter({ q })
+      );
+      const stories = edition.sections?.[0]?.stories ?? [];
+      console.info("[frontpage] adapterResult", {
+        category: id,
+        adapter: entry.name,
+        rawCount: edition.sections?.[0]?.stories?.length ?? 0,
+        mappedCount: stories.length,
+        fallbackReason: stories.length ? null : "empty",
+      });
+      if (stories.length) {
+        return stories;
+      }
+    } catch (err) {
+      console.warn("[frontpage] adapterError", {
+        category: id,
+        adapter: entry.name,
+        fallbackReason: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
   return [];

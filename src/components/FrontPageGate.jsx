@@ -462,57 +462,81 @@ export default function FrontPageGate({ data }) {
       controller.abort();
     }, LOAD_TIMEOUT_MS);
 
-    fetch(`/api/news.json${categoryParam}`, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    })
-      .then((res) => {
+    (async () => {
+      let fetched = false;
+      try {
+        console.info("[frontpage] fetch start", { selectedKey, categoryParam });
+        const res = await fetch(`/api/news.json${categoryParam}`, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((json) => {
+        const json = await res.json();
+        fetched = true;
         if (!active) return;
         const nextSections = json.sections ?? [];
-        if (nextSections.length) {
-          window.clearTimeout(timeoutId);
-          const nextVersion = Number(json?.meta?.fetchedAt || 0);
-          const currentVersion = liveVersionRef.current;
-          if (
-            currentVersion &&
-            nextVersion &&
-            nextVersion <= currentVersion &&
-            liveKey === selectedKey
-          ) {
-            if (debugVersionsEnabled()) {
-              console.info("[frontpage] skip update", {
-                selectedKey,
-                currentVersion,
-                nextVersion,
-              });
-            }
-            setTimedOut(false);
-            return;
-          }
+        console.info("[frontpage] fetch response", {
+          selectedKey,
+          sections: nextSections.length,
+          stories: nextSections.reduce(
+            (sum, section) => sum + (section.stories?.length || 0),
+            0
+          ),
+        });
+        if (!nextSections.length) {
+          setTimedOut(true);
+          return;
+        }
+        window.clearTimeout(timeoutId);
+        const nextVersion = Number(json?.meta?.fetchedAt || 0);
+        const currentVersion = liveVersionRef.current;
+        if (
+          currentVersion &&
+          nextVersion &&
+          nextVersion <= currentVersion &&
+          liveKey === selectedKey
+        ) {
           if (debugVersionsEnabled()) {
-            console.info("[frontpage] apply update", {
+            console.info("[frontpage] skip update", {
               selectedKey,
               currentVersion,
               nextVersion,
-              stories: nextSections.reduce(
-                (sum, section) => sum + (section.stories?.length || 0),
-                0
-              ),
             });
           }
-          setLiveSections(nextSections);
-          setLiveKey(selectedKey);
-          setLiveVersion(nextVersion || Date.now());
           setTimedOut(false);
+          return;
         }
-      })
-      .catch(() => {
+        if (debugVersionsEnabled()) {
+          console.info("[frontpage] apply update", {
+            selectedKey,
+            currentVersion,
+            nextVersion,
+            stories: nextSections.reduce(
+              (sum, section) => sum + (section.stories?.length || 0),
+              0
+            ),
+          });
+        }
+        setLiveSections(nextSections);
+        setLiveKey(selectedKey);
+        setLiveVersion(nextVersion || Date.now());
+        setTimedOut(false);
+      } catch (err) {
         if (!active) return;
-      });
+        console.warn("[frontpage] fetch error", {
+          selectedKey,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        setTimedOut(true);
+      } finally {
+        if (!active) return;
+        if (!fetched) {
+          console.info("[frontpage] fetch end", { selectedKey, ok: false });
+        } else {
+          console.info("[frontpage] fetch end", { selectedKey, ok: true });
+        }
+      }
+    })();
 
     return () => {
       active = false;
