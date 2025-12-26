@@ -72,11 +72,13 @@ async function postEventRegistry(payload: unknown) {
 
 export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   const key = apiKey();
+  console.info("[newsapi.ai/er] apiKey", Boolean(key));
   if (!key) return { sections: [] };
 
   const query = q?.trim() ? q.trim() : "United States";
   const limit = 30;
   const lang = "eng";
+  console.info("[newsapi.ai/er] request", { query, lang, limit });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
   const cached = erCache.get(cacheKey);
@@ -104,6 +106,10 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   }
 
   const raw = json?.articles?.results ?? [];
+  console.info("[newsapi.ai/er] articles", {
+    returned: raw.length,
+    total: json?.articles?.totalResults ?? null,
+  });
 
   const stories: Story[] = raw.map((article, idx) => {
     const url = article.url ?? "";
@@ -128,6 +134,7 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   });
 
   const edition: Edition = { sections: [{ label: "Featured", stories }] };
+  console.info("[newsapi.ai/er] mapped", stories.length);
   erCache.set(cacheKey, { value: edition, expiresAt: now + ER_CACHE_TTL_MS });
   return edition;
 };

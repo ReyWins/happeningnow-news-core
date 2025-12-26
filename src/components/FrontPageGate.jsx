@@ -292,6 +292,10 @@ function byPopularityThenDate(a, b) {
   return getDateMs(b) - getDateMs(a);
 }
 
+function isNewsApiStory(story) {
+  return String(story?.id ?? "").startsWith("newsapi:");
+}
+
 function buildEditionFromThreeSections(exactThreeSections, maxStories = 30) {
   const nowMs = Date.now();
   const seenTitles = new Set();
@@ -326,6 +330,9 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30) {
     return { ...story, breaking };
   });
 
+  const preferredFeaturedPool = scored.filter((story) => isNewsApiStory(story));
+  const featuredPool = preferredFeaturedPool.length ? preferredFeaturedPool : scored;
+
   const featuredIds = scored
     .slice()
     .sort(byPopularityThenDate)
@@ -333,6 +340,7 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30) {
       const ageHours = getAgeHours(getDateMs(story), nowMs);
       return (story.popularity || 0) > 0 && ageHours <= FEATURED_WINDOW_HOURS;
     })
+    .filter((story) => featuredPool.includes(story))
     .slice(0, FEATURED_COUNT)
     .map((story) => story.id);
 

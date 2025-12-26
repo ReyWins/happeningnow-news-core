@@ -1161,6 +1161,23 @@ export default function FrontPage(props) {
           letter-spacing: 0.1em;
           text-transform: uppercase;
           color: color-mix(in srgb, var(--muted) 85%, var(--ink) 15%);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .adapterTag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          border: 1px solid var(--rule);
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          background: color-mix(in srgb, var(--paper) 92%, var(--ink) 8%);
+          color: var(--ink);
         }
 
         .frontpage .content,
@@ -1552,10 +1569,22 @@ function BookmarkButton({ story, bookmarks, onToggle }) {
   );
 }
 
-const StoryMeta = React.memo(function StoryMeta({ source, publishDate }) {
-  if (!source && !publishDate) return null;
+function getAdapterTag(story) {
+  const id = String(story?.id ?? "");
+  if (id.startsWith("gdelt:")) return "GDELT";
+  if (id.startsWith("newsapi:")) return "NEWSAPI.AI";
+  return "";
+}
+
+const StoryMeta = React.memo(function StoryMeta({ source, publishDate, adapterTag }) {
+  if (!source && !publishDate && !adapterTag) return null;
   const label = [source, formatDate(publishDate)].filter(Boolean).join(" · ");
-  return <div className="storyMeta">{label}</div>;
+  return (
+    <div className="storyMeta">
+      {label}
+      {adapterTag ? <span className="adapterTag">{adapterTag}</span> : null}
+    </div>
+  );
 });
 
 /* -----------------------------
@@ -1618,7 +1647,13 @@ const Story = React.memo(function Story({ story, bookmarks, handleBookmarkToggle
           />
         ) : null}
       </div>
-      {!isPlaceholder ? <StoryMeta source={story.source} publishDate={story.publishDate} /> : null}
+      {!isPlaceholder ? (
+        <StoryMeta
+          source={story.source}
+          publishDate={story.publishDate}
+          adapterTag={getAdapterTag(story)}
+        />
+      ) : null}
 
       <h3 className="headline">{story.title}</h3>
 
