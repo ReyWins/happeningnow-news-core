@@ -46,6 +46,17 @@ function pickDate(article: ErArticle) {
   return article.dateTimePub || article.dateTime || "";
 }
 
+function limitKeywordQuery(query: string, limit = 15) {
+  const trimmed = query.trim();
+  if (!trimmed) return trimmed;
+  const match = trimmed.match(/\((.+)\)/);
+  const inner = match ? match[1] : trimmed;
+  const parts = inner.split(/\s+OR\s+/i).map((part) => part.trim()).filter(Boolean);
+  if (parts.length <= limit) return trimmed;
+  const limited = parts.slice(0, limit).join(" OR ");
+  return match ? trimmed.replace(match[1], limited) : limited;
+}
+
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
   return `er:key=${key}|q=${q}|limit=${limit}|lang=${lang}`;
 }
@@ -75,10 +86,12 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   console.info("[newsapi.ai/er] apiKey", Boolean(key));
   if (!key) return { sections: [] };
 
-  const query = q?.trim() ? q.trim() : "United States";
+  const rawQuery = q?.trim() ? q.trim() : "United States";
+  const query = limitKeywordQuery(rawQuery, 15);
   const limit = 30;
   const lang = "eng";
-  console.info("[newsapi.ai/er] request", { query, lang, limit });
+  const keywordCount = query.split(/\s+OR\s+/i).length;
+  console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
   const cached = erCache.get(cacheKey);
