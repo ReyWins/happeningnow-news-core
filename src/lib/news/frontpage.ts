@@ -121,7 +121,11 @@ function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
     : `(${normalized.join(" OR ")})`;
 }
 
-function buildFeaturedQuery(ids: string[], baseQuery = BASE_QUERY) {
+function buildFeaturedQuery(
+  ids: string[],
+  baseQuery = BASE_QUERY,
+  keywordLimit = 15
+) {
   const baseValue = String(baseQuery ?? "").trim();
   const keywords: string[] = [];
 
@@ -135,7 +139,7 @@ function buildFeaturedQuery(ids: string[], baseQuery = BASE_QUERY) {
     if (label) keywords.push(label);
   });
 
-  const unique = Array.from(new Set(keywords.filter(Boolean)));
+  const unique = Array.from(new Set(keywords.filter(Boolean))).slice(0, keywordLimit);
   if (!unique.length) return baseValue;
 
   const normalized = unique.map((entry) =>
