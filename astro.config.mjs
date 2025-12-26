@@ -8,7 +8,9 @@ import netlify from '@astrojs/netlify';
 
 export default defineConfig({
   output: 'server',
-  adapter: netlify(),
+  adapter: netlify({
+    includeFiles: ["src/content/**"],
+  }),
   integrations: [
     react(),
     keystatic(),
