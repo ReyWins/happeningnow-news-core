@@ -7,13 +7,11 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
       import.meta.env.DEV ||
       String(process.env.KEYSTATIC_PREVIEW_ENABLED ?? "").toLowerCase() === "true";
     if (!localAccess) {
-      return new Response(
-        "<!doctype html><title>Not Found</title><h1>404</h1><p>Not Found</p>",
-        {
-          status: 404,
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        }
-      );
+      const response = await context.rewrite("/404");
+      return new Response(response.body, {
+        status: 403,
+        headers: response.headers,
+      });
     }
   }
 
