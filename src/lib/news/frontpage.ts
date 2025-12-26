@@ -5,7 +5,8 @@ import { getCachedEdition } from "./cache";
 import { CATEGORIES, DEFAULT_CATEGORY_IDS } from "../../data/categories";
 
 const BASE_QUERY = "United States";
-const NEWSAPI_MAX_KEYWORDS = 8;
+const NEWSAPI_HARD_LIMIT = 15;
+const NEWSAPI_MAX_KEYWORDS = 12;
 const CATEGORY_QUERY_HINTS: Record<string, string[]> = {
   global: [
     "election",
@@ -155,7 +156,16 @@ function selectNewsApiKeywords(id: string) {
   const phrases = hints.filter((entry) => entry.includes(" "));
   const singles = hints.filter((entry) => !entry.includes(" "));
   const ordered = [...phrases, ...singles];
-  return ordered.slice(0, NEWSAPI_MAX_KEYWORDS);
+  let keywords = Array.from(
+    new Set(ordered.map((entry) => entry.trim()).filter(Boolean))
+  );
+  if (keywords.length > NEWSAPI_MAX_KEYWORDS) {
+    keywords = keywords.slice(0, NEWSAPI_MAX_KEYWORDS);
+  }
+  if (keywords.length > NEWSAPI_HARD_LIMIT) {
+    keywords = keywords.slice(0, NEWSAPI_HARD_LIMIT);
+  }
+  return keywords;
 }
 
 function buildNewsApiQuery(id: string, baseQuery = BASE_QUERY) {

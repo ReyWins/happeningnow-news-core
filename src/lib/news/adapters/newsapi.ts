@@ -66,6 +66,16 @@ function limitKeywordQuery(query: string, limit = 15) {
   return next.trim() || trimmed;
 }
 
+function extractKeywords(query: string) {
+  if (!query) return [];
+  const groupMatch = query.match(/\((.*)\)/);
+  const group = groupMatch?.[1] ?? "";
+  return group
+    .split(/\s+OR\s+/i)
+    .map((part) => part.replace(/^"|"$/g, "").trim())
+    .filter(Boolean);
+}
+
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
   return `er:key=${key}|q=${q}|limit=${limit}|lang=${lang}`;
 }
@@ -105,7 +115,9 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   }
   const limit = 30;
   const lang = "eng";
-  const keywordCount = query.split(/\s+OR\s+/i).length;
+  const keywords = extractKeywords(query);
+  const keywordCount = keywords.length;
+  console.info("[newsapi.ai/er] keywordCount", keywordCount, "keywords", keywords);
   console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
