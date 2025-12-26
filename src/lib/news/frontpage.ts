@@ -121,6 +121,30 @@ function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
     : `(${normalized.join(" OR ")})`;
 }
 
+function buildFeaturedQuery(ids: string[], baseQuery = BASE_QUERY) {
+  const baseValue = String(baseQuery ?? "").trim();
+  const keywords: string[] = [];
+
+  ids.forEach((id) => {
+    const hints = CATEGORY_QUERY_HINTS[id];
+    if (hints?.length) {
+      keywords.push(...hints);
+      return;
+    }
+    const label = labelForCategory(id);
+    if (label) keywords.push(label);
+  });
+
+  const unique = Array.from(new Set(keywords.filter(Boolean)));
+  if (!unique.length) return baseValue;
+
+  const normalized = unique.map((entry) =>
+    entry.includes(" ") ? `"${entry}"` : entry
+  );
+  const base = baseValue.includes(" ") ? `"${baseValue}"` : baseValue;
+  return base ? `${base} AND (${normalized.join(" OR ")})` : `(${normalized.join(" OR ")})`;
+}
+
 type CategoryQueryBuilder = (id: string, baseQuery: string) => string;
 
 type CategoryAdapterEntry = {
@@ -278,5 +302,21 @@ export async function getFrontPageEdition({
     return { label, stories: [] };
   });
 
-  return { sections };
+  const featuredQuery = buildFeaturedQuery(ids, baseQuery);
+  console.info("[frontpage] featuredQuery", {
+    categories: ids,
+    query: featuredQuery,
+  });
+  const featuredCacheKey = `frontpage:newsapi:featured:${ids.join("|")}:${featuredQuery}`;
+  const featuredEdition = await getCachedEdition(
+    featuredCacheKey,
+    fallbackTtlMs ?? ttlMs,
+    () => newsApiAdapter({ q: featuredQuery })
+  );
+  const featuredStories = featuredEdition.sections?.[0]?.stories ?? [];
+
+  return {
+    sections,
+    meta: featuredStories.length ? { featuredStories } : undefined,
+  };
 }
