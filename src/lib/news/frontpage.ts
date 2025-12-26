@@ -5,6 +5,7 @@ import { getCachedEdition } from "./cache";
 import { CATEGORIES, DEFAULT_CATEGORY_IDS } from "../../data/categories";
 
 const BASE_QUERY = "United States";
+const NEWSAPI_MAX_KEYWORDS = 8;
 const CATEGORY_QUERY_HINTS: Record<string, string[]> = {
   global: [
     "election",
@@ -121,40 +122,13 @@ function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
     : `(${normalized.join(" OR ")})`;
 }
 
-function buildFeaturedQuery(
-  ids: string[],
-  baseQuery = BASE_QUERY,
-  keywordLimit = 15
-) {
-  const baseValue = String(baseQuery ?? "").trim();
-  const keywords: string[] = [];
-
-  ids.forEach((id) => {
-    const hints = CATEGORY_QUERY_HINTS[id];
-    if (hints?.length) {
-      keywords.push(...hints);
-      return;
-    }
-    const label = labelForCategory(id);
-    if (label) keywords.push(label);
-  });
-
-  const unique = Array.from(new Set(keywords.filter(Boolean))).slice(0, keywordLimit);
-  if (!unique.length) return baseValue;
-
-  const normalized = unique.map((entry) =>
-    entry.includes(" ") ? `"${entry}"` : entry
-  );
-  const base = baseValue.includes(" ") ? `"${baseValue}"` : baseValue;
-  return base ? `${base} AND (${normalized.join(" OR ")})` : `(${normalized.join(" OR ")})`;
-}
-
 type CategoryQueryBuilder = (id: string, baseQuery: string) => string;
 
 type CategoryAdapterEntry = {
   name: string;
   adapter: NewsAdapter;
   ttlMs?: number;
+  minStories?: number;
   queryBuilder?: CategoryQueryBuilder;
 };
 
@@ -167,6 +141,32 @@ function resolveCategoryQuery(
   const trimmed = String(raw ?? "").trim();
   if (trimmed) return trimmed;
   return labelForCategory(id);
+}
+
+function countQueryKeywords(query: string) {
+  if (!query) return 0;
+  const groupMatch = query.match(/\((.*)\)/);
+  const group = groupMatch?.[1] ?? query;
+  return group.split(/\s+OR\s+/i).map((part) => part.trim()).filter(Boolean).length;
+}
+
+function selectNewsApiKeywords(id: string) {
+  const hints = CATEGORY_QUERY_HINTS[id] ?? [];
+  const phrases = hints.filter((entry) => entry.includes(" "));
+  const singles = hints.filter((entry) => !entry.includes(" "));
+  const ordered = [...phrases, ...singles];
+  return ordered.slice(0, NEWSAPI_MAX_KEYWORDS);
+}
+
+function buildNewsApiQuery(id: string, baseQuery = BASE_QUERY) {
+  const baseValue = String(baseQuery ?? "").trim();
+  const keywords = selectNewsApiKeywords(id);
+  if (!keywords.length) return baseValue;
+  const normalized = keywords.map((entry) =>
+    entry.includes(" ") ? `"${entry}"` : entry
+  );
+  const base = baseValue.includes(" ") ? `"${baseValue}"` : baseValue;
+  return base ? `${base} AND (${normalized.join(" OR ")})` : `(${normalized.join(" OR ")})`;
 }
 
 async function getStoriesForCategory({
@@ -184,11 +184,13 @@ async function getStoriesForCategory({
     const q = resolveCategoryQuery(entry.queryBuilder, id, baseQuery);
     if (!q) continue;
     const cacheKey = `frontpage:${entry.name}:${id}:${q}`;
+    const keywordCount = countQueryKeywords(q);
     console.info("[frontpage] selectedAdapter", {
       category: id,
       adapter: entry.name,
       query: q,
       cacheKey,
+      keywordCount,
     });
     try {
       const edition = await getCachedEdition(
@@ -197,14 +199,20 @@ async function getStoriesForCategory({
         () => entry.adapter({ q })
       );
       const stories = edition.sections?.[0]?.stories ?? [];
+      const fallbackReason =
+        stories.length === 0
+          ? "empty"
+          : entry.minStories && stories.length < entry.minStories
+            ? "below_min"
+            : null;
       console.info("[frontpage] adapterResult", {
         category: id,
         adapter: entry.name,
         rawCount: edition.sections?.[0]?.stories?.length ?? 0,
         mappedCount: stories.length,
-        fallbackReason: stories.length ? null : "empty",
+        fallbackReason,
       });
-      if (stories.length) {
+      if (stories.length && (!entry.minStories || stories.length >= entry.minStories)) {
         return stories;
       }
     } catch (err) {
@@ -264,15 +272,17 @@ export async function getFrontPageEdition({
     categoryAdapters ??
     [
       {
-        name: "gdelt",
-        adapter: gdeltAdapter,
-        queryBuilder: buildCategoryQuery,
-      },
-      {
         name: "newsapi",
         adapter: newsApiAdapter,
         ttlMs: fallbackTtlMs ?? ttlMs,
-        queryBuilder: fallbackQueryBuilder,
+        minStories: 3,
+        queryBuilder: (id, base) =>
+          fallbackQueryBuilder?.(id, base) ?? buildNewsApiQuery(id, base),
+      },
+      {
+        name: "gdelt",
+        adapter: gdeltAdapter,
+        queryBuilder: buildCategoryQuery,
       },
     ];
 
@@ -306,21 +316,5 @@ export async function getFrontPageEdition({
     return { label, stories: [] };
   });
 
-  const featuredQuery = buildFeaturedQuery(ids, baseQuery);
-  console.info("[frontpage] featuredQuery", {
-    categories: ids,
-    query: featuredQuery,
-  });
-  const featuredCacheKey = `frontpage:newsapi:featured:${ids.join("|")}:${featuredQuery}`;
-  const featuredEdition = await getCachedEdition(
-    featuredCacheKey,
-    fallbackTtlMs ?? ttlMs,
-    () => newsApiAdapter({ q: featuredQuery })
-  );
-  const featuredStories = featuredEdition.sections?.[0]?.stories ?? [];
-
-  return {
-    sections,
-    meta: featuredStories.length ? { featuredStories } : undefined,
-  };
+  return { sections };
 }

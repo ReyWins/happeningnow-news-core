@@ -31,7 +31,6 @@ function readFrontCache(ids = []) {
     if (Date.now() - Number(parsed.savedAt || 0) > FRONT_CACHE_TTL_MS) return null;
     return {
       sections: parsed.sections,
-      featuredStories: parsed.featuredStories ?? [],
       version: Number(parsed.version || 0),
       savedAt,
     };
@@ -40,7 +39,7 @@ function readFrontCache(ids = []) {
   }
 }
 
-function writeFrontCache(ids = [], sections = [], featuredStories = [], version = 0) {
+function writeFrontCache(ids = [], sections = [], version = 0) {
   if (typeof window === "undefined") return;
   if (!ids.length || !sections.length) return;
   const key = getFrontCacheKey(ids);
@@ -51,7 +50,6 @@ function writeFrontCache(ids = [], sections = [], featuredStories = [], version 
         savedAt: Date.now(),
         version: Number(version) || 0,
         sections,
-        featuredStories,
       })
     );
   } catch {}
@@ -298,7 +296,7 @@ function isNewsApiStory(story) {
   return String(story?.id ?? "").startsWith("newsapi:");
 }
 
-function buildEditionFromThreeSections(exactThreeSections, maxStories = 30, featuredStories = []) {
+function buildEditionFromThreeSections(exactThreeSections, maxStories = 30) {
   const nowMs = Date.now();
   const seenTitles = new Set();
   const allStories = exactThreeSections.flatMap((sec) =>
@@ -332,20 +330,7 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30, feat
     return { ...story, breaking };
   });
 
-  const preferredFeaturedPool = (featuredStories ?? [])
-    .filter((story) => isNewsApiStory(story))
-    .map((story) => ({
-      ...story,
-      popularity: getPopularity(story),
-    }))
-    .map((story) => {
-      const popularityPct = getPopularityPct(story.popularity || 0, maxPopularity);
-      const ageHours = getAgeHours(getDateMs(story), nowMs);
-      const breaking =
-        !!story.breaking ||
-        (popularityPct >= BREAKING_MIN_PCT && ageHours <= BREAKING_WINDOW_HOURS);
-      return { ...story, breaking };
-    });
+  const preferredFeaturedPool = scored.filter((story) => isNewsApiStory(story));
   const featuredPool = preferredFeaturedPool.length ? preferredFeaturedPool : scored;
 
   const featuredIds = featuredPool
@@ -367,15 +352,10 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30, feat
   const featuredRow = ranked
     .filter((story) => featuredIds.includes(story.id))
     .slice(0, FEATURED_COUNT);
-  const featuredOverride = preferredFeaturedPool.length
-    ? preferredFeaturedPool
-        .filter((story) => featuredIds.includes(story.id))
-        .slice(0, FEATURED_COUNT)
-    : featuredRow;
-  const usedIds = new Set(featuredOverride.map((story) => story.id));
+  const usedIds = new Set(featuredRow.map((story) => story.id));
 
   const merged = [
-    ...featuredOverride,
+    ...featuredRow,
     ...ranked.filter((story) => !usedIds.has(story.id)),
   ].slice(0, maxStories);
 
@@ -393,9 +373,7 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30, feat
 
 export default function FrontPageGate({ data }) {
   const baseSections = data?.sections ?? [];
-  const baseFeaturedStories = data?.meta?.featuredStories ?? [];
   const [liveSections, setLiveSections] = useState(null);
-  const [liveFeaturedStories, setLiveFeaturedStories] = useState([]);
   const [liveKey, setLiveKey] = useState("");
   const [liveVersion, setLiveVersion] = useState(0);
   const liveVersionRef = useRef(0);
@@ -417,12 +395,6 @@ export default function FrontPageGate({ data }) {
       : useBaseSections
         ? baseSections
         : [];
-  const featuredStories =
-    liveSections && liveKey === selectedKey
-      ? liveFeaturedStories
-      : useBaseSections
-        ? baseFeaturedStories
-        : [];
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -430,13 +402,11 @@ export default function FrontPageGate({ data }) {
     const cached = readFrontCache(selectedIds);
     if (cached?.sections?.length) {
       setLiveSections(cached.sections);
-      setLiveFeaturedStories(cached.featuredStories ?? []);
       setLiveKey(selectedKey);
       setLiveVersion(cached.version || 0);
       return;
     }
     setLiveSections(null);
-    setLiveFeaturedStories([]);
     setLiveKey("");
     setLiveVersion(0);
   }, [selectedIds, hasHydrated]);
@@ -445,8 +415,8 @@ export default function FrontPageGate({ data }) {
     if (typeof window === "undefined") return;
     if (!liveSections || !liveSections.length) return;
     if (liveKey !== selectedKey) return;
-    writeFrontCache(selectedIds, liveSections, liveFeaturedStories, liveVersion);
-  }, [liveSections, liveFeaturedStories, liveKey, selectedIds, selectedKey, liveVersion]);
+    writeFrontCache(selectedIds, liveSections, liveVersion);
+  }, [liveSections, liveKey, selectedIds, selectedKey, liveVersion]);
 
   useEffect(() => {
     liveVersionRef.current = liveVersion;
@@ -504,7 +474,6 @@ export default function FrontPageGate({ data }) {
         fetched = true;
         if (!active) return;
         const nextSections = json.sections ?? [];
-        const nextFeaturedStories = json?.meta?.featuredStories ?? [];
         console.info("[frontpage] fetch response", {
           selectedKey,
           sections: nextSections.length,
@@ -512,7 +481,6 @@ export default function FrontPageGate({ data }) {
             (sum, section) => sum + (section.stories?.length || 0),
             0
           ),
-          featuredStories: nextFeaturedStories.length,
         });
         if (!nextSections.length) {
           setTimedOut(true);
@@ -549,7 +517,6 @@ export default function FrontPageGate({ data }) {
           });
         }
         setLiveSections(nextSections);
-        setLiveFeaturedStories(nextFeaturedStories);
         setLiveKey(selectedKey);
         setLiveVersion(nextVersion || Date.now());
         setTimedOut(false);
@@ -735,8 +702,8 @@ export default function FrontPageGate({ data }) {
   const editionSections = useMemo(() => {
     const minPerSection = 20;
     const maxStories = Math.max(30, exactThreeSections.length * minPerSection);
-    return buildEditionFromThreeSections(exactThreeSections, maxStories, featuredStories);
-  }, [exactThreeSections, featuredStories]);
+    return buildEditionFromThreeSections(exactThreeSections, maxStories);
+  }, [exactThreeSections]);
   const statusMessage =
     sections.length === 0 && !timedOut ? "Rendering latest stories..." : "";
 
