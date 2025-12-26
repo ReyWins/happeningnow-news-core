@@ -1,12 +1,7 @@
 import { config, fields, collection, singleton } from "@keystatic/core";
 
-const repo =
-  import.meta.env.KEYSTATIC_GITHUB_REPO ?? "ReyWins/happeningnow-news-core";
-const isDev = import.meta.env.DEV;
-const useGitHub = import.meta.env.KEYSTATIC_STORAGE === "github" && !isDev;
-
 export const keystaticConfig = config({
-  storage: useGitHub ? { kind: "github", repo } : { kind: "local" },
+  storage: { kind: "local" },
   singletons: {
     changelog: singleton({
       label: "Change Log",
