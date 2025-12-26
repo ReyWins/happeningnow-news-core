@@ -1,0 +1,99 @@
+:root {
+  --bg: #ffffff;
+  --fg: #0b0b0f;
+
+  --card: #f4f5f7;
+  --border: rgba(0, 0, 0, 0.12);
+
+  --link: #2563eb;
+
+  /* toggle tokens */
+  --toggle-bg: rgba(0, 0, 0, 0.06);
+  --toggle-bg-active: rgba(0, 0, 0, 0.12);
+  --toggle-fg: var(--fg);
+
+  --neon: rgba(37, 99, 235, 0.75);
+  --neon-soft: rgba(37, 99, 235, 0.4);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+
+:root[data-mode="dark"] {
+  --bg: #0b0b0f;
+  --fg: #f3f4f6;
+
+  --card: #12121a;
+  --border: rgba(255, 255, 255, 0.18);
+
+  --link: #60a5fa;
+
+  --toggle-bg: rgba(255, 255, 255, 0.10);
+  --toggle-bg-active: rgba(255, 255, 255, 0.16);
+  --toggle-fg: var(--fg);
+
+  --neon: rgba(96, 165, 250, 0.85);
+  --neon-soft: rgba(96, 165, 250, 0.45);
+
+  /* category tweaks */
+  --category-label: #e5e7eb;
+  --category-keywords: rgba(229, 231, 235, 0.8);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Links (theme wins) */
+a:where(:link, :visited) {
+  color: var(--link);
+  text-decoration-color: color-mix(in srgb, var(--link) 60%, transparent);
+}
+a:where(:hover, :focus-visible) {
+  color: var(--link);
+  text-decoration-color: var(--link);
+}
+
+/* Header/nav link overrides */
+header a:where(:link, :visited),
+nav a:where(:link, :visited),
+.masthead a:where(:link, :visited),
+.topbar a:where(:link, :visited) {
+  color: var(--link);
+}
+
+/* Toggle styles */
+/* Toggle styles (single button) */
+.modeToggle {
+  appearance: none;
+  border: 0;
+  background: transparent;     /* no circle */
+  padding: 0;                  /* no pill padding */
+  cursor: pointer;
+  line-height: 1;
+
+  display: inline-flex;
+  align-items: center;
+
+  color: var(--ink);           /* matches masthead ink */
+  opacity: 0.75;
+}
+
+.modeToggle:hover {
+  opacity: 1;
+}
+
+.modeToggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--link) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.modeToggle svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}

@@ -1,0 +1,102 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+import Masthead from "../components/Masthead.astro";
+import data from "../data/mockNews.json";
+import { getKeystaticReader } from "../lib/keystatic";
+import { DocumentRenderer } from "@keystatic/core/renderer";
+import { Icon } from "astro-icon/components";
+
+const keystaticReader = await getKeystaticReader();
+const entry = await keystaticReader.singletons.changelog.read();
+const bodyDoc = entry?.body ? await entry.body() : null;
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <section class="page">
+    <header class="page-header">
+      <div class="kicker">
+        Change Log</div>
+      <h2><Icon name="tabler:replace" size="22" />
+        Recent Updates
+      </h2>
+      <p>Tracking improvements as we build the daily edition experience.</p>
+    </header>
+
+    <div class="content">
+      {entry ? (
+        <>
+          <div class="entry-date">{entry.date}</div>
+          <h3>{entry.title}</h3>
+          {entry.author ? <div class="entry-author">By {entry.author}</div> : null}
+          {bodyDoc ? <DocumentRenderer document={bodyDoc} /> : <p>Add body content in Keystatic.</p>}
+        </>
+      ) : (
+        <p>Add content in Keystatic.</p>
+      )}
+    </div>
+  </section>
+
+  <style>
+    .page {
+      margin-top: 18px;
+      border-top: 2px solid var(--ink);
+      padding-top: 16px;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    h2 {
+      margin: 8px 0 10px;
+      font-size: 28px;
+      letter-spacing: 0.08em;
+    }
+    h3 {
+      margin: 10px 0 6px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    p {
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+    .content {
+      max-width: 720px;
+      margin: 0 auto;
+      color: var(--fg);
+    }
+    .entry {
+      border-top: 1px solid var(--rule);
+      padding-top: 12px;
+      margin-top: 16px;
+    }
+    .entry-date {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .entry-author {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    ul {
+      margin: 0 0 10px 18px;
+      padding: 0;
+      line-height: 1.6;
+    }
+  </style>
+</NewspaperLayout>

@@ -1,0 +1,285 @@
+---
+import NewspaperLayout from "../../layouts/NewspaperLayout.astro";
+import Masthead from "../../components/Masthead.astro";
+import data from "../../data/mockNews.json";
+import { getKeystaticReader, listBlogSlugs } from "../../lib/keystatic";
+import { DocumentRenderer } from "@keystatic/core/renderer";
+
+export async function getStaticPaths() {
+  const reader = await getKeystaticReader();
+  const slugs = await listBlogSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const keystaticReader = await getKeystaticReader();
+const entry = slug ? await keystaticReader.collections.blog.read(slug) : null;
+const slugs = await listBlogSlugs();
+const allEntries = (
+  await Promise.all(
+    slugs.map(async (slugItem) => {
+      const item = await keystaticReader.collections.blog.read(slugItem);
+      if (!item) return null;
+      return { slug: slugItem, entry: item, date: item.date };
+    })
+  )
+).filter(Boolean);
+const bodyDoc = entry?.body ? await entry.body() : null;
+const sorted = allEntries.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+const currentIndex = slug ? sorted.findIndex((item) => item.slug === slug) : -1;
+const prevPost = currentIndex > 0 ? sorted[currentIndex - 1] : null;
+const nextPost =
+  currentIndex >= 0 && currentIndex < sorted.length - 1
+    ? sorted[currentIndex + 1]
+    : null;
+const showPostNav = sorted.length > 3;
+
+if (!entry) {
+  return Astro.redirect("/blog");
+}
+
+const heroImage =
+  typeof entry.image === "string"
+    ? entry.image
+    : (entry.image as { src?: string } | null)?.src ?? null;
+const summaryText = entry.description || entry.summary || "";
+const rawDate = entry.date;
+const dateValue =
+  rawDate instanceof Date || typeof rawDate === "string" || typeof rawDate === "number"
+    ? rawDate
+    : null;
+const formattedDate = dateValue
+  ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(dateValue))
+  : "";
+const authorName = entry.author || "Staff";
+const authorInitials = authorName
+  .split(" ")
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase() ?? "")
+  .join("");
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <section class="page">
+    <header class="page-header">
+      <div class="kicker">Blog</div>
+    </header>
+
+    <section
+      class={`hero ${heroImage ? "has-image" : "no-image"}`}
+      style={heroImage ? `--hero-image: url('${heroImage}')` : undefined}
+    >
+      <div class="hero-content">
+        {entry.tags?.length ? (
+          <div class="hero-tags">
+            {entry.tags.map((tag) => (
+              <a class="tag" href={`/blog/tags?tag=${encodeURIComponent(tag)}`} key={tag}>
+                {tag}
+              </a>
+            ))}
+          </div>
+        ) : null}
+        <h1 class="hero-title">{entry.title}</h1>
+        {summaryText ? <p class="hero-summary">{summaryText}</p> : null}
+      </div>
+    </section>
+
+    <div class="author-row">
+      <div class="author-avatar" aria-hidden="true">
+        {authorInitials || "HN"}
+      </div>
+      <div class="author-meta">
+        <div class="author-name">
+          {authorName}
+          <span class="author-verified" aria-label="Verified author" title="Verified author">✓</span>
+        </div>
+        {formattedDate ? <div class="author-date">{formattedDate}</div> : null}
+      </div>
+    </div>
+
+    <div class="content">
+      {bodyDoc ? <DocumentRenderer document={bodyDoc} /> : <p>Add body content in Keystatic.</p>}
+    </div>
+
+    {showPostNav ? (
+      <nav class="post-nav">
+        {prevPost ? (
+          <a class="post-link" href={`/blog/${prevPost.slug}`}>
+            ← {prevPost.entry.title}
+          </a>
+        ) : <span />}
+        {nextPost ? (
+          <a class="post-link" href={`/blog/${nextPost.slug}`}>
+            {nextPost.entry.title} →
+          </a>
+        ) : <span />}
+      </nav>
+    ) : null}
+  </section>
+
+  <style>
+    .page {
+      margin-top: 18px;
+      border-top: 2px solid var(--ink);
+      padding-top: 16px;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    p {
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+    .hero {
+      position: relative;
+      z-index: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 320px;
+      display: flex;
+      align-items: flex-end;
+      padding: 28px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.75));
+    }
+    .hero.has-image {
+      background-image:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.78)),
+        var(--hero-image);
+      background-size: cover;
+      background-position: center;
+    }
+    .hero.no-image {
+      background: linear-gradient(135deg, #1f1f1f, #3b3b3b);
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      color: #f2f2f2;
+      max-width: 720px;
+    }
+    .hero-title {
+      margin: 10px 0 8px;
+      font-size: 36px;
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+    }
+    .hero-summary {
+      margin: 0;
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.6;
+    }
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag {
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #fff;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .tag:hover {
+      background: #fff;
+      color: #111;
+      border-color: #fff;
+    }
+    .author-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0 8px;
+    }
+    .author-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: var(--rule);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .author-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .author-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .author-verified {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: #1d9bf0;
+      color: #fff;
+      font-size: 10px;
+      line-height: 1;
+      box-shadow: 0 0 0 2px var(--paper);
+    }
+    .author-date {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .content {
+      max-width: 760px;
+      margin: 0 auto;
+      color: var(--fg);
+    }
+    .post-nav {
+      margin-top: 24px;
+      border-top: 1px solid var(--rule);
+      padding-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .post-link {
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      max-width: 46%;
+    }
+    .post-link:hover {
+      text-decoration: underline;
+    }
+    ul {
+      margin: 0 0 10px 18px;
+      padding: 0;
+      line-height: 1.6;
+    }
+  </style>
+</NewspaperLayout>

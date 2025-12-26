@@ -1,0 +1,12 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+import Masthead from "../components/Masthead.astro";
+import FrontPage from "../components/FrontPage.jsx";
+import data from "../data/mockNews.json";
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <FrontPage sections={data.sections} mode="bookmarks" client:load />
+</NewspaperLayout>

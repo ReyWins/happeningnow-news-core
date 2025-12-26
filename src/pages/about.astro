@@ -1,0 +1,76 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+import Masthead from "../components/Masthead.astro";
+import data from "../data/mockNews.json";
+import { getKeystaticReader } from "../lib/keystatic";
+import { DocumentRenderer } from "@keystatic/core/renderer";
+import { Icon } from "astro-icon/components"; 
+
+const keystaticReader = await getKeystaticReader();
+const entry = await keystaticReader.singletons.about.read();
+const bodyDoc = entry?.body ? await entry.body() : null;
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <section class="page">
+    <header class="page-header">
+      <div class="kicker">About</div>
+      <h2><Icon name="tabler:info-circle" size="22" /> {entry?.title ?? "Happening Now"}</h2>
+      <p class="meta-line">
+        {entry?.updated ? <span>Updated {entry.updated}</span> : null}
+        {entry?.author ? <span>• {entry.author}</span> : null}
+      </p>
+    </header>
+
+    <div class="content">
+      {entry ? (
+        bodyDoc ? <DocumentRenderer document={bodyDoc} /> : <p>Add body content in Keystatic.</p>
+      ) : (
+        <p>Add content in Keystatic.</p>
+      )}
+    </div>
+  </section>
+
+  <style>
+    .page {
+      margin-top: 18px;
+      border-top: 2px solid var(--ink);
+      padding-top: 16px;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    h2 {
+      margin: 8px 0 10px;
+      font-size: 28px;
+      letter-spacing: 0.08em;
+    }
+    .meta-line {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    p {
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+    .content {
+      max-width: 720px;
+      margin: 0 auto;
+      color: var(--fg);
+    }
+  </style>
+</NewspaperLayout>

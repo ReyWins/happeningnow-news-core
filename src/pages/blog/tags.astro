@@ -1,0 +1,255 @@
+---
+import NewspaperLayout from "../../layouts/NewspaperLayout.astro";
+import Masthead from "../../components/Masthead.astro";
+import data from "../../data/mockNews.json";
+import { getKeystaticReader, listBlogSlugs } from "../../lib/keystatic";
+
+export const prerender = false;
+
+const tagParam = Astro.url.searchParams.get("tag");
+const selectedTag = tagParam ? tagParam.trim() : "";
+const keystaticReader = await getKeystaticReader();
+const slugs = await listBlogSlugs();
+const entries = (
+  await Promise.all(
+    slugs.map(async (slug) => {
+      const entry = await keystaticReader.collections.blog.read(slug);
+      if (!entry) return null;
+      return { slug, entry };
+    })
+  )
+).filter(Boolean);
+const filtered = selectedTag
+  ? entries.filter(({ entry }) => entry.tags?.includes(selectedTag))
+  : entries;
+const sorted = filtered
+  .slice()
+  .sort((a, b) => {
+    const aDate = a.entry.date ? Date.parse(String(a.entry.date)) : Number.NEGATIVE_INFINITY;
+    const bDate = b.entry.date ? Date.parse(String(b.entry.date)) : Number.NEGATIVE_INFINITY;
+    if (aDate !== bDate) return bDate - aDate;
+    return a.slug.localeCompare(b.slug);
+  });
+const allTags = Array.from(
+  new Set(entries.flatMap(({ entry }) => entry.tags ?? []))
+).sort((a, b) => a.localeCompare(b));
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <section class="page">
+    <header class="page-header">
+      <div class="kicker">Tags</div>
+      <h2>{selectedTag ? `Tag: ${selectedTag}` : "All Tags"}</h2>
+      <p>Browse posts by topic.</p>
+    </header>
+
+    {selectedTag ? (
+      <div class="entries">
+        {sorted.length === 0 ? (
+          <p>No posts match this tag yet.</p>
+        ) : (
+          sorted.map(({ slug, entry }) => {
+            const summaryText = entry.summary ?? "";
+            const trimmed = summaryText.slice(0, 220);
+            const needsMore = summaryText.length > 220;
+            return (
+              <article class="entry-card" key={slug}>
+                <a class="card-link" href={`/blog/${slug}`}>
+                  <div class="entry-meta">
+                    {entry.date ? <span class="entry-date">{entry.date}</span> : null}
+                    {entry.author ? (
+                      <>
+                        <span class="dot">•</span>
+                        <span class="entry-author">Author: {entry.author}</span>
+                      </>
+                    ) : null}
+                  </div>
+                  <h3 class="entry-title">{entry.title}</h3>
+                  {trimmed ? (
+                    <p class="summary">
+                      {trimmed}
+                      {needsMore ? "…" : ""}
+                    </p>
+                  ) : null}
+                </a>
+                {entry.tags?.length ? (
+                  <div class="tags">
+                    {entry.tags.map((tag) => (
+                      <a class="tag" href={`/blog/tags?tag=${encodeURIComponent(tag)}`} key={tag}>
+                        {tag}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })
+        )}
+      </div>
+    ) : (
+      <div class="tag-list">
+        {allTags.length === 0 ? (
+          <p>No tags yet.</p>
+        ) : (
+          allTags.map((tag) => (
+            <a class="tag-pill" href={`/blog/tags?tag=${encodeURIComponent(tag)}`} key={tag}>
+              {tag}
+            </a>
+          ))
+        )}
+      </div>
+    )}
+
+    <div class="back-row">
+      <a class="back-link" href="/blog">← Back to Blog</a>
+    </div>
+  </section>
+
+  <style>
+    .page {
+      margin-top: 18px;
+      border-top: 2px solid var(--ink);
+      padding-top: 16px;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    h2 {
+      margin: 8px 0 10px;
+      font-size: 28px;
+      letter-spacing: 0.08em;
+    }
+    p {
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+    .entries {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin: 16px auto 0;
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+    }
+    .entry-card {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+      background: var(--paper);
+      overflow: hidden;
+    }
+    .card-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+      padding: 14px 14px 16px;
+    }
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .dot { color: var(--muted); }
+    .entry-title {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: 0.03em;
+      line-height: 1.3;
+    }
+    .summary {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 6px 14px 14px;
+      align-items: center;
+    }
+    .tag {
+      border: 1px solid var(--rule);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none !important;
+      color: var(--ink) !important;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .tag:hover {
+      background: var(--ink);
+      color: var(--paper) !important;
+      border-color: var(--ink);
+    }
+    .tag-pill {
+      border: 1px solid var(--rule);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none !important;
+      color: var(--ink) !important;
+      display: inline-flex;
+      align-items: center;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .tag-pill:hover {
+      background: var(--ink);
+      color: var(--paper) !important;
+      border-color: var(--ink);
+    }
+    .back-row {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0 6px;
+    }
+    .back-link {
+      border: 1px solid var(--rule);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none !important;
+      color: var(--ink) !important;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .back-link:hover {
+      background: var(--ink);
+      color: var(--paper) !important;
+      border-color: var(--ink);
+    }
+  </style>
+</NewspaperLayout>

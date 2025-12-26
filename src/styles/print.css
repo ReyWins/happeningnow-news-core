@@ -1,0 +1,71 @@
+@media print {
+
+  /* Reset */
+  * {
+    color: #000 !important;
+    background: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  /* Hide UI-only elements */
+  .searchRow,
+  .bookmark,
+  .menu,
+  .featuredPill,
+  nav {
+    display: none !important;
+  }
+
+  /* Masthead */
+  .masthead-title {
+    font-size: 36pt;
+    letter-spacing: 0.12em;
+  }
+
+  .masthead-bar {
+    border: none;
+    margin-bottom: 12pt;
+  }
+
+  /* Layout becomes columns */
+  .frontpage {
+    display: block;
+    column-count: 3;
+    column-gap: 18pt;
+  }
+
+  .col {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  article {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 12pt;
+  }
+
+  h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    filter: none !important;
+  }
+
+  /* Footer (optional later) */
+  .pageRef {
+    font-size: 9pt;
+    margin-top: 4pt;
+  }
+}

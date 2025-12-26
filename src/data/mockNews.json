@@ -1,0 +1,549 @@
+{
+  "meta": {
+    "publishDate": "10 June, 2025",
+    "volume": "VOL.001",
+    "location": "USA",
+    "price": "$2.00",
+    "site": "HappeningNow.news"
+  },
+  "sections": [
+    {
+      "label": "Global & Politics",
+      "stories": [
+        {
+          "id": "g1",
+          "kicker": "Global & Politics",
+          "title": "World leaders meet amid rising geopolitical tensions",
+          "summary": "Two to four sentences max. Keep it newspaper-tight. This is placeholder copy for layout testing.",
+          "imageUrl": "/images/placeholder-1.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 04",
+          "source": "Reuters",
+          "publishDate": "2025-06-08T09:00:00Z"
+        },
+        {
+          "id": "g2",
+          "kicker": "Global & Politics",
+          "title": "Trade ministers seek compromise on new tariff proposals",
+          "summary": "Talks continued late into the night with delegates signaling cautious optimism.",
+          "imageUrl": "/images/placeholder-2.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 04",
+          "source": "AP",
+          "publishDate": "2025-06-09T14:00:00Z"
+        },
+        {
+          "id": "g3",
+          "kicker": "Global & Politics",
+          "title": "Ceasefire framework faces hurdles ahead of summit",
+          "summary": "Negotiators grapple with enforcement language and humanitarian access corridors.",
+          "imageUrl": "/images/placeholder-3.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 04",
+          "source": "BBC",
+          "publishDate": "2025-06-10T06:00:00Z"
+        }
+      ]
+    },
+    {
+      "label": "U.S. Politics",
+      "stories": [
+        {
+          "id": "us1",
+          "kicker": "U.S. Politics",
+          "title": "Congress debates new legislation ahead of summer recess",
+          "summary": "Short summary text for layout. This will later be generated from normalized API output.",
+          "imageUrl": "/images/placeholder-2.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 02",
+          "source": "Politico",
+          "publishDate": "2025-06-09T10:00:00Z"
+        },
+        {
+          "id": "us2",
+          "kicker": "U.S. Politics",
+          "title": "White House outlines new infrastructure funding timeline",
+          "summary": "Officials said guidelines will be published next week with priority corridors listed.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 02",
+          "source": "NYTimes",
+          "publishDate": "2025-06-10T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Business & Finance",
+      "stories": [
+        {
+          "id": "b1",
+          "featured": true,
+          "kicker": "Business & Finance",
+          "title": "Markets close mixed as investors weigh inflation data",
+          "summary": "Short summary text for layout. Later this will be generated from your normalized API output.",
+          "imageUrl": "/images/placeholder-3.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 06",
+          "source": "Reuters",
+          "publishDate": "2025-06-08T12:00:00Z"
+        },
+        {
+          "id": "b2",
+          "kicker": "Business & Finance",
+          "title": "Credit markets steady as yields ease from recent highs",
+          "summary": "Bond traders digested new guidance from central bankers and a lighter supply calendar.",
+          "imageUrl": "/images/placeholder-10.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 06",
+          "source": "FT",
+          "publishDate": "2025-06-09T15:00:00Z"
+        },
+        {
+          "id": "b3",
+          "kicker": "Business & Finance",
+          "title": "Retailers outline cautious outlook ahead of summer season",
+          "summary": "Executives flagged higher labor costs but noted resilient consumer spending.",
+          "imageUrl": "/images/placeholder-9.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 06",
+          "source": "WSJ",
+          "publishDate": "2025-06-10T08:00:00Z"
+        },
+        {
+          "id": "b4",
+          "kicker": "Business & Finance",
+          "title": "IPO pipeline revives as market volatility cools",
+          "summary": "Bankers say several tech and biotech issuers are eyeing late-summer launch windows.",
+          "imageUrl": "/images/placeholder-1.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 06",
+          "source": "CNBC",
+          "publishDate": "2025-06-10T11:20:00Z"
+        },
+        {
+          "id": "b5",
+          "kicker": "Business & Finance",
+          "title": "Oil prices slip as supply concerns ease",
+          "summary": "Traders cited higher inventory data and steady production from key producers.",
+          "imageUrl": "/images/placeholder-6.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 06",
+          "source": "Reuters",
+          "publishDate": "2025-06-10T12:10:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Technology",
+      "stories": [
+        {
+          "id": "t1",
+          "kicker": "Technology",
+          "title": "Major tech firm unveils next-generation AI platform",
+          "summary": "Two to three sentences summarizing the technology news in a neutral tone.",
+          "imageUrl": "/images/placeholder-4.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 09",
+          "source": "TechCrunch",
+          "publishDate": "2025-06-08T10:00:00Z"
+        },
+        {
+          "id": "t2",
+          "kicker": "Technology",
+          "title": "Chipmakers outline roadmap for sub-2nm production",
+          "summary": "Executives shared updated timelines and investments aimed at keeping pace with global demand.",
+          "imageUrl": "/images/placeholder-2.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 10",
+          "source": "EE Times",
+          "publishDate": "2025-06-09T09:00:00Z"
+        },
+        {
+          "id": "t3",
+          "kicker": "Technology",
+          "title": "Researchers demo battery that charges in under 5 minutes",
+          "summary": "A lab prototype promises faster charging times, with commercialization expected later this decade.",
+          "imageUrl": "/images/placeholder-3.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 10",
+          "source": "Nature",
+          "publishDate": "2025-06-10T07:00:00Z"
+        },
+        {
+          "id": "t4",
+          "kicker": "Technology",
+          "title": "Privacy-focused browser rolls out new anti-tracking tools",
+          "summary": "The update blocks more fingerprinting techniques and adds simplified controls.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 10",
+          "source": "The Verge",
+          "publishDate": "2025-06-10T09:40:00Z"
+        },
+        {
+          "id": "t5",
+          "kicker": "Technology",
+          "title": "Cloud providers cut data egress fees in competitive push",
+          "summary": "Analysts say price moves target AI workloads and multi-cloud migration friction.",
+          "imageUrl": "/images/placeholder-5.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 10",
+          "source": "WSJ",
+          "publishDate": "2025-06-10T11:50:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Cybersecurity",
+      "stories": [
+        {
+          "id": "c1",
+          "kicker": "Cybersecurity",
+          "title": "Global outage traced to misconfigured CDN update",
+          "summary": "Security teams rushed to rollback after a routine patch knocked sites offline worldwide.",
+          "imageUrl": "/images/placeholder-5.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 07",
+          "featured": true,
+          "source": "Krebs",
+          "publishDate": "2025-06-09T01:00:00Z"
+        },
+        {
+          "id": "c2",
+          "kicker": "Cybersecurity",
+          "title": "Ransomware group leaks data after stalled negotiations",
+          "summary": "Analysts warn of rising double-extortion tactics as enterprises face tighter budgets.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 07",
+          "source": "BleepingComputer",
+          "publishDate": "2025-06-09T16:00:00Z"
+        },
+        {
+          "id": "c3",
+          "kicker": "Cybersecurity",
+          "title": "Critical vulnerability patched in widely used VPN appliance",
+          "summary": "Admins are urged to apply updates immediately; no confirmed exploits yet in the wild.",
+          "imageUrl": "/images/placeholder-9.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 07",
+          "breaking": true,
+          "source": "The Register",
+          "publishDate": "2025-06-10T05:30:00Z"
+        },
+        {
+          "id": "c4",
+          "kicker": "Cybersecurity",
+          "title": "Insurer tightens cyber policy requirements after surge in claims",
+          "summary": "New controls include mandatory MFA audits and quarterly tabletop exercises.",
+          "imageUrl": "/images/placeholder-4.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 07",
+          "source": "Bloomberg",
+          "publishDate": "2025-06-10T09:45:00Z"
+        },
+        {
+          "id": "c5",
+          "kicker": "Cybersecurity",
+          "title": "Government publishes draft rules for critical infrastructure reporting",
+          "summary": "Operators would have 48 hours to disclose significant cyber incidents under the proposal.",
+          "imageUrl": "/images/placeholder-8.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 07",
+          "source": "Reuters",
+          "publishDate": "2025-06-10T11:15:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Health",
+      "stories": [
+        {
+          "id": "h1",
+          "kicker": "Health",
+          "title": "Health officials release new guidance on seasonal illnesses",
+          "summary": "Concise summary text explaining the update and its broader impact.",
+          "imageUrl": "/images/placeholder-5.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 11",
+          "source": "CDC",
+          "publishDate": "2025-06-09T12:00:00Z"
+        },
+        {
+          "id": "h2",
+          "kicker": "Health",
+          "title": "New study links sleep quality to cardiovascular outcomes",
+          "summary": "Researchers tracked thousands of participants to measure the impact of consistent rest.",
+          "imageUrl": "/images/placeholder-3.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 11",
+          "source": "JAMA",
+          "publishDate": "2025-06-10T06:45:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Science",
+      "stories": [
+        {
+          "id": "s1",
+          "kicker": "Science",
+          "title": "Researchers make breakthrough discovery in space science",
+          "summary": "Short, factual description of the discovery and why it matters.",
+          "imageUrl": "/images/placeholder-6.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 12",
+          "source": "NASA",
+          "publishDate": "2025-06-10T06:30:00Z"
+        },
+        {
+          "id": "s2",
+          "kicker": "Science",
+          "title": "Archaeologists uncover intact artifacts in desert site",
+          "summary": "Carefully excavated items could reshape timelines for early trade routes.",
+          "imageUrl": "/images/placeholder-1.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 13",
+          "source": "BBC",
+          "publishDate": "2025-06-09T17:00:00Z"
+        },
+        {
+          "id": "s3",
+          "kicker": "Science",
+          "title": "Lab-grown organ transplant shows promising results",
+          "summary": "A small trial suggests bioengineered tissues may soon move to larger studies.",
+          "imageUrl": "/images/placeholder-8.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 13",
+          "breaking": true,
+          "source": "Science Daily",
+          "publishDate": "2025-06-10T11:00:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Energy & Utilities",
+      "stories": [
+        {
+          "id": "eu1",
+          "kicker": "Energy & Utilities",
+          "title": "Grid operators brace for record summer demand",
+          "summary": "Utilities line up extra capacity and demand-response programs to avoid outages.",
+          "imageUrl": "/images/placeholder-4.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 05",
+          "source": "DOE",
+          "publishDate": "2025-06-09T03:00:00Z"
+        },
+        {
+          "id": "eu2",
+          "kicker": "Energy & Utilities",
+          "title": "Renewables hit new milestone in regional generation mix",
+          "summary": "Solar and wind surpassed previous highs, aided by favorable weather and storage.",
+          "imageUrl": "/images/placeholder-6.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 05",
+          "featured": true,
+          "source": "EIA",
+          "publishDate": "2025-06-10T05:00:00Z"
+        },
+        {
+          "id": "eu3",
+          "kicker": "Energy & Utilities",
+          "title": "Utility regulators weigh new reliability standards",
+          "summary": "Draft rules would require faster reporting on outages and cyber incidents.",
+          "imageUrl": "/images/placeholder-2.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 05",
+          "source": "Utility Dive",
+          "publishDate": "2025-06-09T21:00:00Z"
+        },
+        {
+          "id": "eu4",
+          "kicker": "Energy & Utilities",
+          "title": "Battery storage projects accelerate in key markets",
+          "summary": "Developers secured new interconnection approvals to add capacity before summer.",
+          "imageUrl": "/images/placeholder-1.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 05",
+          "source": "Reuters",
+          "publishDate": "2025-06-10T07:30:00Z"
+        },
+        {
+          "id": "eu5",
+          "kicker": "Energy & Utilities",
+          "title": "Grid modernization funding clears final regulatory hurdle",
+          "summary": "A multibillion-dollar package targets transmission upgrades and wildfire mitigation.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 05",
+          "source": "Bloomberg",
+          "publishDate": "2025-06-10T10:15:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Environment",
+      "stories": [
+        {
+          "id": "e1",
+          "kicker": "Environment",
+          "title": "Climate report highlights regional impacts across the U.S.",
+          "summary": "Brief summary focusing on environmental findings and projected trends.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 14",
+          "source": "NOAA",
+          "publishDate": "2025-06-08T13:00:00Z"
+        },
+        {
+          "id": "e2",
+          "kicker": "Environment",
+          "title": "Wildfire crews gain ground as winds ease overnight",
+          "summary": "Containment improved across several hotspots with aerial support resuming at dawn.",
+          "imageUrl": "/images/placeholder-6.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 14",
+          "source": "AP",
+          "publishDate": "2025-06-09T23:30:00Z"
+        },
+        {
+          "id": "e3",
+          "kicker": "Environment",
+          "title": "Coastal cities weigh new flood mitigation incentives",
+          "summary": "Local councils consider grants for home elevation and stormwater upgrades.",
+          "imageUrl": "/images/placeholder-3.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 14",
+          "source": "Guardian",
+          "publishDate": "2025-06-10T08:30:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Today’s Weather",
+      "stories": [
+        {
+          "id": "w1",
+          "kicker": "Today’s Weather",
+          "title": "Heat and storms expected across multiple regions today",
+          "summary": "Short summary text for layout testing. Keep it consistent and readable.",
+          "imageUrl": "/images/placeholder-8.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 08",
+          "source": "NOAA",
+          "publishDate": "2025-06-10T05:00:00Z"
+        },
+        {
+          "id": "w2",
+          "kicker": "Today’s Weather",
+          "title": "Cooler air moves in after overnight storms",
+          "summary": "Temperatures dip across the Midwest with clearing skies by afternoon.",
+          "imageUrl": "/images/placeholder-5.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 08",
+          "source": "NOAA",
+          "publishDate": "2025-06-10T11:30:00Z"
+        },
+        {
+          "id": "w3",
+          "kicker": "Today’s Weather",
+          "title": "Southwest heat advisory extended through weekend",
+          "summary": "Officials urge residents to limit afternoon activity and stay hydrated.",
+          "imageUrl": "/images/placeholder-7.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 08",
+          "source": "NOAA",
+          "publishDate": "2025-06-10T09:30:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Sports",
+      "stories": [
+        {
+          "id": "sp1",
+          "kicker": "Sports",
+          "title": "Underdog team advances in dramatic playoff finish",
+          "summary": "Game recap placeholder text highlighting the key moment.",
+          "imageUrl": "/images/placeholder-9.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 16",
+          "source": "AP",
+          "publishDate": "2025-06-09T02:00:00Z"
+        },
+        {
+          "id": "sp2",
+          "kicker": "Sports",
+          "title": "Star forward sidelined with injury ahead of finals",
+          "summary": "Coaches weigh lineup changes after the team’s leading scorer exits practice.",
+          "imageUrl": "/images/placeholder-6.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 16",
+          "source": "ESPN",
+          "publishDate": "2025-06-10T04:00:00Z"
+        },
+        {
+          "id": "sp3",
+          "kicker": "Sports",
+          "title": "Rookie pitcher throws complete-game shutout",
+          "summary": "Fans celebrated as the newcomer delivered a standout performance on short rest.",
+          "imageUrl": "/images/placeholder-1.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 16",
+          "source": "MLB.com",
+          "publishDate": "2025-06-10T07:15:00Z"
+        }
+      ]
+    },
+    {
+      "label": "Entertainment",
+      "stories": [
+        {
+          "id": "en1",
+          "kicker": "Entertainment",
+          "title": "New film release draws early praise from critics",
+          "summary": "Entertainment news placeholder summarizing reviews and reception.",
+          "imageUrl": "/images/placeholder-10.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 18",
+          "source": "Variety",
+          "publishDate": "2025-06-08T18:00:00Z"
+        },
+        {
+          "id": "en2",
+          "kicker": "Entertainment",
+          "title": "Music festival announces surprise headliner",
+          "summary": "Organizers added a late-night set to close out the weekend lineup.",
+          "imageUrl": "/images/placeholder-2.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 18",
+          "source": "Billboard",
+          "publishDate": "2025-06-09T20:00:00Z"
+        },
+        {
+          "id": "en3",
+          "kicker": "Entertainment",
+          "title": "Streaming platform orders new sci-fi anthology series",
+          "summary": "The project pairs emerging directors with seasoned writers for standalone episodes.",
+          "imageUrl": "/images/placeholder-5.jpg",
+          "imageFloat": "left",
+          "pageRef": "Page 18",
+          "source": "Hollywood Reporter",
+          "publishDate": "2025-06-10T03:00:00Z"
+        },
+        {
+          "id": "en4",
+          "kicker": "Entertainment",
+          "title": "Box office sees stronger-than-expected weekend turnout",
+          "summary": "Studio executives cited favorable reviews and limited streaming competition.",
+          "imageUrl": "/images/placeholder-8.jpg",
+          "imageFloat": "right",
+          "pageRef": "Page 18",
+          "source": "Deadline",
+          "publishDate": "2025-06-10T09:10:00Z"
+        }
+      ]
+    }
+  ]
+}

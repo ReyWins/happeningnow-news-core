@@ -1,0 +1,51 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+import Masthead from "../components/Masthead.astro";
+import CategoryPicker from "../components/CategoryPicker.jsx";
+import { CATEGORIES } from "../data/categories.js";
+import data from "../data/mockNews.json";
+---
+
+<NewspaperLayout meta={data.meta}>
+  <Masthead meta={data.meta} />
+
+  <section class="wrap">
+    <header class="header">
+      <div class="kicker">Edition Settings</div>
+      <h2 class="title">Choose 3 Categories</h2>
+      <p class="sub">
+        These three categories drive your front page cards and featured story.
+      </p>
+    </header>
+
+    <CategoryPicker categories={CATEGORIES} max={3} client:load />
+  </section>
+
+  <style>
+    .wrap {
+      margin-top: 18px;
+    }
+    .header {
+      text-align: center;
+      margin: 18px 0 12px;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .title {
+      margin: 10px 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.08em;
+    }
+    .sub {
+      margin: 0 auto;
+      max-width: 720px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+  </style>
+</NewspaperLayout>

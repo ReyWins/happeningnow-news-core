@@ -1,0 +1,95 @@
+:root[data-theme="heritage"] {
+  --bg: #f3dfc1;
+  --fg: #1a1c1a;
+  --card: #f3cea1;
+  --border: rgba(26, 28, 26, 0.18);
+  --link: #2f4f4f;
+  --muted: rgba(26, 28, 26, 0.62);
+  --rule: rgba(26, 28, 26, 0.2);
+  --neon: rgba(160, 120, 65, 0.75);
+  --neon-soft: rgba(160, 120, 65, 0.35);
+}
+
+:root[data-theme="heritage"][data-mode="dark"] {
+  --bg: #1a1c1a;
+  --fg: #efe3cf;
+  --card: #26211c;
+  --border: rgba(239, 227, 207, 0.2);
+  --link: #d1b48c;
+  --muted: rgba(239, 227, 207, 0.62);
+  --rule: rgba(239, 227, 207, 0.2);
+  --neon: rgba(209, 180, 140, 0.85);
+  --neon-soft: rgba(209, 180, 140, 0.45);
+}
+
+:root[data-theme="newsroom"] {
+  --bg: #eef2f7;
+  --fg: #101621;
+  --card: #ffffff;
+  --border: rgba(16, 22, 33, 0.16);
+  --link: #2b6cb0;
+  --muted: rgba(16, 22, 33, 0.58);
+  --rule: rgba(16, 22, 33, 0.18);
+  --neon: rgba(43, 108, 176, 0.75);
+  --neon-soft: rgba(43, 108, 176, 0.35);
+}
+
+:root[data-theme="newsroom"][data-mode="dark"] {
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --card: #161b22;
+  --border: rgba(230, 237, 243, 0.2);
+  --link: #6ea8fe;
+  --muted: rgba(230, 237, 243, 0.62);
+  --rule: rgba(230, 237, 243, 0.2);
+  --neon: rgba(110, 168, 254, 0.85);
+  --neon-soft: rgba(110, 168, 254, 0.45);
+}
+
+:root[data-theme="linen"] {
+  --bg: #f7f2ea;
+  --fg: #3c2c21;
+  --card: #fff9f0;
+  --border: rgba(60, 44, 33, 0.16);
+  --link: #8b4b2b;
+  --muted: rgba(60, 44, 33, 0.6);
+  --rule: rgba(60, 44, 33, 0.2);
+  --neon: rgba(139, 75, 43, 0.75);
+  --neon-soft: rgba(139, 75, 43, 0.35);
+}
+
+:root[data-theme="linen"][data-mode="dark"] {
+  --bg: #1a1310;
+  --fg: #f6eadb;
+  --card: #241a16;
+  --border: rgba(246, 234, 219, 0.2);
+  --link: #d9a37c;
+  --muted: rgba(246, 234, 219, 0.6);
+  --rule: rgba(246, 234, 219, 0.2);
+  --neon: rgba(217, 163, 124, 0.85);
+  --neon-soft: rgba(217, 163, 124, 0.45);
+}
+
+:root[data-theme="clippings"] {
+  --bg: #e8ecef;
+  --fg: #1f2a33;
+  --card: #f6f8fa;
+  --border: rgba(31, 42, 51, 0.16);
+  --link: #35566b;
+  --muted: rgba(31, 42, 51, 0.58);
+  --rule: rgba(31, 42, 51, 0.2);
+  --neon: rgba(53, 86, 107, 0.75);
+  --neon-soft: rgba(53, 86, 107, 0.35);
+}
+
+:root[data-theme="clippings"][data-mode="dark"] {
+  --bg: #11161b;
+  --fg: #e6ecef;
+  --card: #1b2229;
+  --border: rgba(230, 236, 239, 0.2);
+  --link: #8fb3c7;
+  --muted: rgba(230, 236, 239, 0.62);
+  --rule: rgba(230, 236, 239, 0.2);
+  --neon: rgba(143, 179, 199, 0.85);
+  --neon-soft: rgba(143, 179, 199, 0.45);
+}

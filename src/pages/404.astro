@@ -1,0 +1,124 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+---
+
+<NewspaperLayout>
+  <section class="notfound">
+    <div class="halo" aria-hidden="true"></div>
+    <div class="panel">
+      <div class="kicker">404 — Page Not Found</div>
+      <h1 class="headline">Lost in the Feed</h1>
+      <p class="copy">
+        The story you requested got rerouted into the noise. Let’s glide back to the front
+        page and pick up a fresh edit.
+      </p>
+      <a class="back" href="/">← Return to Happening Now</a>
+    </div>
+  </section>
+
+  <style>
+    :global(body) {
+      background: radial-gradient(circle at top, #171b36 0%, #050711 55%, #000 100%);
+      min-height: 100vh;
+    }
+
+    .notfound {
+      min-height: calc(100vh - 160px);
+      display: grid;
+      place-items: center;
+      padding: 40px 20px;
+    }
+
+    .panel {
+      position: relative;
+      padding: 48px;
+      max-width: 600px;
+      text-align: center;
+      background: rgba(6, 9, 25, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      box-shadow:
+        0 10px 35px rgba(20, 40, 120, 0.35),
+        0 0 45px rgba(227, 51, 255, 0.25);
+      backdrop-filter: blur(12px);
+      color: #fff;
+    }
+
+    .halo {
+      position: absolute;
+      inset: 0;
+      top: -60px;
+      bottom: -60px;
+      left: -20px;
+      right: -20px;
+      background: radial-gradient(circle, rgba(227, 51, 255, 0.45), transparent 50%);
+      filter: blur(25px);
+      z-index: -1;
+      animation: pulse 3.6s ease-in-out infinite;
+    }
+
+    .kicker {
+      font-size: 13px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: #7effff;
+      margin-bottom: 18px;
+    }
+
+    .headline {
+      font-size: clamp(38px, 4vw, 54px);
+      margin: 0 0 20px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow:
+        0 0 10px rgba(227, 51, 255, 0.9),
+        0 0 30px rgba(7, 200, 255, 0.4);
+    }
+
+    .copy {
+      margin: 0 auto 30px;
+      max-width: 440px;
+      font-size: 16px;
+      line-height: 1.8;
+      color: #cad5ff;
+    }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 10px 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      color: #fff;
+      text-decoration: none;
+      background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+      box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.2);
+      transition: transform 220ms ease, box-shadow 220ms ease;
+    }
+
+    .back:hover,
+    .back:focus-visible {
+      transform: translateY(-2px);
+      box-shadow:
+        inset 0 0 20px rgba(255, 255, 255, 0.4),
+        0 0 25px rgba(227, 51, 255, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(0.9);
+        opacity: 0.6;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 1;
+      }
+    }
+  </style>
+</NewspaperLayout>

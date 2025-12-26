@@ -1,0 +1,68 @@
+---
+import NewspaperLayout from "../layouts/NewspaperLayout.astro";
+import Masthead from "../components/Masthead.astro";
+import SearchGate from "../components/SearchGate.jsx";
+import SectionStripGate from "../components/SectionStripGate.jsx";
+import FrontPageGate from "../components/FrontPageGate.jsx";
+import data from "../data/mockNews.json";
+import { DEFAULT_CATEGORY_IDS } from "../data/categories";
+import { gdeltAdapter, mockAdapter, newsApiAdapter } from "../lib/news";
+import { getCachedEdition } from "../lib/news/cache";
+import { getFrontPageEdition } from "../lib/news/frontpage";
+
+export const prerender = false;
+
+const CACHE_TTL_MS = 120_000;
+const adapterEnv = process.env.NEWS_ADAPTER;
+const adapterName =
+  adapterEnv === "mock"
+    ? "mock"
+    : adapterEnv === "gdelt"
+      ? "gdelt"
+      : "newsapi";
+const adapter =
+  adapterName === "gdelt"
+    ? gdeltAdapter
+    : adapterName === "newsapi"
+      ? newsApiAdapter
+      : mockAdapter;
+const FRONT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
+
+let edition;
+const fetchedAt = Date.now();
+try {
+  if (adapterName === "mock") {
+    edition = await getCachedEdition(
+      `homepage:${adapterName}`,
+      CACHE_TTL_MS,
+      () => adapter({ q: "" })
+    );
+  } else {
+    edition = await getFrontPageEdition({
+      ttlMs: CACHE_TTL_MS,
+      categoryIds: DEFAULT_CATEGORY_IDS,
+      fallbackTtlMs: FRONT_FALLBACK_TTL_MS,
+    });
+  }
+} catch {
+  edition = { sections: [] };
+}
+
+const mergedData = {
+  ...data,
+  sections: edition.sections ?? [],
+  meta: {
+    ...(data.meta ?? {}),
+    ...(edition.meta ?? {}),
+    fetchedAt,
+  },
+};
+---
+
+<NewspaperLayout meta={mergedData.meta}>
+  <Masthead meta={mergedData.meta} />
+
+  <SearchGate client:load />
+  <SectionStripGate data={mergedData} client:load />
+  <FrontPageGate data={mergedData} client:load />
+</NewspaperLayout>
