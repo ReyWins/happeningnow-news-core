@@ -50,7 +50,7 @@ function pickDate(article: ErArticle) {
 function normalizeKeyword(q: string) {
   return q
     .replace(/\bAND\b|\bOR\b/gi, " ")
-    .replace(/[()"]/g, "")
+    .replace(/[()"']/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -86,19 +86,33 @@ async function postEventRegistry(payload: unknown) {
 }
 
 export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
+  console.info("[newsapi.ai/er] entered", {
+    hasQ: Boolean(q),
+    envAI: Boolean(process.env.NEWSAPI_AI_KEY),
+    envKey: Boolean(process.env.NEWSAPI_KEY),
+    envER: Boolean(process.env.EVENTREGISTRY_API_KEY),
+  });
   const key = apiKey();
   console.info("[newsapi.ai/er] apiKey", Boolean(key));
-  if (!key) return { sections: [] };
+  if (!key) {
+    console.info("[newsapi.ai/er] missingKey", {
+      envAI: Boolean(process.env.NEWSAPI_AI_KEY),
+      envKey: Boolean(process.env.NEWSAPI_KEY),
+      envER: Boolean(process.env.EVENTREGISTRY_API_KEY),
+    });
+    return { sections: [] };
+  }
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  const query = normalizeKeyword(rawQuery);
+  const keyword = normalizeKeyword(rawQuery);
   const limit = 30;
   const lang = "eng";
   console.info("[newsapi.ai/er] rawQuery", rawQuery);
-  console.info("[newsapi.ai/er] normalizedQuery", query);
-  console.info("[newsapi.ai/er] request", { query, lang, limit });
+  console.info("[newsapi.ai/er] keyword", keyword);
+  console.info("[newsapi.ai/er] queryString", keyword);
+  console.info("[newsapi.ai/er] request", { keyword, lang, limit });
 
-  const cacheKey = buildCacheKey(query, limit, lang, key);
+  const cacheKey = buildCacheKey(keyword, limit, lang, key);
   const cached = erCache.get(cacheKey);
   const now = Date.now();
   if (cached && cached.expiresAt > now) return cached.value;
@@ -106,22 +120,11 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   const payload = {
     apiKey: key,
     action: "getArticles",
-    resultType: "articles",
-    articlesPage: 1,
+    keyword: keyword,
+    lang: "eng",
     articlesCount: limit,
-    query: {
-      $query: {
-        $and: [{ keyword: query }, { lang: "eng" }],
-      },
-    },
   };
-  console.info("[newsapi.ai/er] requestBody", {
-    action: payload.action,
-    resultType: payload.resultType,
-    articlesPage: payload.articlesPage,
-    articlesCount: payload.articlesCount,
-    query: payload.query,
-  });
+  console.info("[newsapi.ai/er] requestBody", payload);
 
   let { res, json } = await postEventRegistry(payload);
   console.info("[newsapi.ai/er] status", res.status, res.statusText);
