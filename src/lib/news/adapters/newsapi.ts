@@ -76,6 +76,14 @@ function buildErKeywordQuery(rawQuery: string, limit = ER_MAX_KEYWORDS) {
   return { erQuery: erQuery || trimmed, keywords: limited, base };
 }
 
+function toEventRegistryKeyword(q: string) {
+  return String(q ?? "")
+    .replace(/\bAND\b|\bOR\b/gi, " ")
+    .replace(/[()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
   return `er:key=${key}|q=${q}|limit=${limit}|lang=${lang}`;
 }
@@ -106,12 +114,16 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   if (!key) return { sections: [] };
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  const { erQuery: query, keywords, base } = buildErKeywordQuery(rawQuery, ER_MAX_KEYWORDS);
+  const keywordQuery = toEventRegistryKeyword(rawQuery);
+  const { erQuery: query, keywords, base } = buildErKeywordQuery(
+    keywordQuery,
+    ER_MAX_KEYWORDS
+  );
   const limit = 30;
   const lang = "eng";
   const keywordCount = keywords.length;
   console.info("[newsapi.ai/er] keywordCount", keywordCount, "keywords", keywords);
-  console.info("[newsapi.ai/er] queryMode", { rawQuery, base, query });
+  console.info("[newsapi.ai/er] queryMode", { rawQuery, keywordQuery, base, query });
   console.info("[newsapi.ai/er] queryString", query);
   console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
 
