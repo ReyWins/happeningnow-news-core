@@ -27,6 +27,7 @@ type ErResponse = {
 
 const EVENTREGISTRY_ENDPOINT = "https://eventregistry.org/api/v1/article/getArticles";
 const ER_CACHE_TTL_MS = 30 * 60 * 1000;
+const ER_MAX_KEYWORDS = 12;
 const erCache = new Map<string, { value: Edition; expiresAt: number }>();
 
 function apiKey() {
@@ -56,7 +57,13 @@ function extractKeywords(query: string) {
     .filter(Boolean);
 }
 
-function buildErKeywordQuery(rawQuery: string, limit = 12) {
+function quoteTerm(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.includes(" ") ? `"${trimmed}"` : trimmed;
+}
+
+function buildErKeywordQuery(rawQuery: string, limit = ER_MAX_KEYWORDS) {
   const trimmed = rawQuery.trim();
   if (!trimmed) return { erQuery: trimmed, keywords: [], base: "" };
   const baseMatch = trimmed.match(/^(.*?)\s+AND\s+\(/i);
@@ -64,7 +71,8 @@ function buildErKeywordQuery(rawQuery: string, limit = 12) {
   let keywords = extractKeywords(trimmed).map((entry) => entry.trim()).filter(Boolean);
   keywords = Array.from(new Set(keywords));
   const limited = keywords.slice(0, limit);
-  const erQuery = [base, ...limited].filter(Boolean).join(" ");
+  const terms = [base, ...limited].filter(Boolean).map(quoteTerm);
+  const erQuery = terms.join(" ");
   return { erQuery: erQuery || trimmed, keywords: limited, base };
 }
 
@@ -98,12 +106,13 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   if (!key) return { sections: [] };
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  const { erQuery: query, keywords, base } = buildErKeywordQuery(rawQuery, 12);
+  const { erQuery: query, keywords, base } = buildErKeywordQuery(rawQuery, ER_MAX_KEYWORDS);
   const limit = 30;
   const lang = "eng";
   const keywordCount = keywords.length;
   console.info("[newsapi.ai/er] keywordCount", keywordCount, "keywords", keywords);
   console.info("[newsapi.ai/er] queryMode", { rawQuery, base, query });
+  console.info("[newsapi.ai/er] queryString", query);
   console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
@@ -131,18 +140,45 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
     query: payload.query,
   });
 
-  const { res, json } = await postEventRegistry(payload);
+  let { res, json } = await postEventRegistry(payload);
   console.info("[newsapi.ai/er] status", res.status, res.statusText);
   if (!res.ok || json?.error || json?.errorDescr) {
     console.warn("[newsapi.ai/er] error", json?.error, json?.errorDescr);
     return { sections: [] };
   }
 
-  const raw = json?.articles?.results ?? [];
+  let raw = json?.articles?.results ?? [];
   console.info("[newsapi.ai/er] articles", {
     returned: raw.length,
     total: json?.articles?.totalResults ?? null,
   });
+
+  if (!raw.length && base) {
+    const fallbackTerms = keywords.map(quoteTerm);
+    const fallbackQuery = fallbackTerms.join(" ");
+    if (fallbackQuery) {
+      const retryPayload = {
+        ...payload,
+        query: {
+          $query: {
+            $and: [{ keyword: fallbackQuery }, { lang: "eng" }],
+          },
+        },
+      };
+      console.info("[newsapi.ai/er] retryQuery", fallbackQuery);
+      ({ res, json } = await postEventRegistry(retryPayload));
+      console.info("[newsapi.ai/er] retryStatus", res.status, res.statusText);
+      if (!res.ok || json?.error || json?.errorDescr) {
+        console.warn("[newsapi.ai/er] retryError", json?.error, json?.errorDescr);
+        return { sections: [] };
+      }
+      raw = json?.articles?.results ?? [];
+      console.info("[newsapi.ai/er] retryArticles", {
+        returned: raw.length,
+        total: json?.articles?.totalResults ?? null,
+      });
+    }
+  }
 
   const stories: Story[] = raw.map((article, idx) => {
     const url = article.url ?? "";
