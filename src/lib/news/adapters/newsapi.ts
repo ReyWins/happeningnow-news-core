@@ -46,26 +46,6 @@ function pickDate(article: ErArticle) {
   return article.dateTimePub || article.dateTime || "";
 }
 
-function limitKeywordQuery(query: string, limit = 15) {
-  const trimmed = query.trim();
-  if (!trimmed) return trimmed;
-
-  const groupMatch = trimmed.match(/^(.*?\bAND\b\s*)\((.*)\)\s*$/i);
-  const prefix = groupMatch?.[1] ?? "";
-  const group = groupMatch?.[2] ?? trimmed;
-  const parts = group
-    .split(/\s+OR\s+/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length <= limit) return trimmed;
-
-  const limited = parts.slice(0, limit).join(" OR ");
-  const next = groupMatch ? `${prefix}(${limited})` : limited;
-
-  return next.trim() || trimmed;
-}
-
 function extractKeywords(query: string) {
   if (!query) return [];
   const groupMatch = query.match(/\((.*)\)/);
@@ -74,6 +54,18 @@ function extractKeywords(query: string) {
     .split(/\s+OR\s+/i)
     .map((part) => part.replace(/^"|"$/g, "").trim())
     .filter(Boolean);
+}
+
+function buildErKeywordQuery(rawQuery: string, limit = 12) {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return { erQuery: trimmed, keywords: [], base: "" };
+  const baseMatch = trimmed.match(/^(.*?)\s+AND\s+\(/i);
+  const base = baseMatch?.[1]?.trim() ?? "";
+  let keywords = extractKeywords(trimmed).map((entry) => entry.trim()).filter(Boolean);
+  keywords = Array.from(new Set(keywords));
+  const limited = keywords.slice(0, limit);
+  const erQuery = [base, ...limited].filter(Boolean).join(" ");
+  return { erQuery: erQuery || trimmed, keywords: limited, base };
 }
 
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
@@ -106,18 +98,12 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   if (!key) return { sections: [] };
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  let query = limitKeywordQuery(rawQuery, 15);
-  if (query !== rawQuery) {
-    console.info("[newsapi.ai/er] query trimmed", {
-      rawQuery,
-      query,
-    });
-  }
+  const { erQuery: query, keywords, base } = buildErKeywordQuery(rawQuery, 12);
   const limit = 30;
   const lang = "eng";
-  const keywords = extractKeywords(query);
   const keywordCount = keywords.length;
   console.info("[newsapi.ai/er] keywordCount", keywordCount, "keywords", keywords);
+  console.info("[newsapi.ai/er] queryMode", { rawQuery, base, query });
   console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
@@ -137,6 +123,13 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
       },
     },
   };
+  console.info("[newsapi.ai/er] requestBody", {
+    action: payload.action,
+    resultType: payload.resultType,
+    articlesPage: payload.articlesPage,
+    articlesCount: payload.articlesCount,
+    query: payload.query,
+  });
 
   const { res, json } = await postEventRegistry(payload);
   console.info("[newsapi.ai/er] status", res.status, res.statusText);
