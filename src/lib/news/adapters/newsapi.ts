@@ -31,8 +31,8 @@ const erCache = new Map<string, { value: Edition; expiresAt: number }>();
 const NEWSAPI_HARD_LIMIT = 15;
 const NEWSAPI_MAX_KEYWORDS = 12;
 const NEWSAPI_SINGLE_SHOT = true;
-const NEWSAPI_PRIMARY_TERMS = 3;
-const NEWSAPI_REGION_BIAS = ["United States", "Northeast"];
+const NEWSAPI_PRIMARY_TERMS = 2;
+const NEWSAPI_REGION_BIAS: string[] = [];
 
 function getEnvValue(name: string) {
   const metaEnv =

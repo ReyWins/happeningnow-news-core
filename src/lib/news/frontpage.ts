@@ -279,6 +279,39 @@ async function getStoriesFromMock({
   return edition.sections?.[0]?.stories ?? [];
 }
 
+function storyMatchesCategory(story: Story, id: string) {
+  const category = CATEGORIES.find((entry) => entry.id === id);
+  const keywords = category?.keywords?.length ? category.keywords : CATEGORY_QUERY_HINTS[id] ?? [];
+  const domains = category?.domainsPreferred ?? category?.domains ?? [];
+  const url = String(story?.url ?? "");
+  const domain = (() => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    } catch {
+      return "";
+    }
+  })();
+  if (domains.length && domain) {
+    const match = domains.some(
+      (entry) => domain === entry || domain.endsWith(`.${entry}`)
+    );
+    if (match) return true;
+  }
+  if (!keywords.length) return true;
+  const hay = `${story?.title ?? ""} ${story?.summary ?? ""} ${story?.source ?? ""} ${story?.url ?? ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+  return keywords.some((keyword) => {
+    const needle = String(keyword ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+    if (!needle) return false;
+    if (needle.includes(" ")) return hay.includes(needle);
+    return hay.split(" ").includes(needle);
+  });
+}
+
 async function getMixedStoriesForCategory({
   id,
   baseQuery,
@@ -292,7 +325,7 @@ async function getMixedStoriesForCategory({
   newsapiTtlMs?: number;
   gdeltTtlMs?: number;
 }): Promise<Story[]> {
-  const newsApiQuery = resolveCategoryQuery(buildNewsApiQuery, id, baseQuery);
+  const newsApiQuery = resolveCategoryQuery(buildNewsApiQuery, id, "");
   const gdeltQuery = resolveCategoryQuery(buildCategoryQuery, id, baseQuery);
   const newsApiCacheKey = `frontpage:newsapi-top:${id}:${newsApiQuery}`;
   const gdeltCacheKey = `frontpage:gdelt:${id}:${gdeltQuery}`;
@@ -302,8 +335,12 @@ async function getMixedStoriesForCategory({
     newsapiTtlMs ?? ttlMs,
     () => newsApiAdapter({ q: newsApiQuery })
   );
-  const newsApiStory =
+  const candidateNewsApiStory =
     newsApiEdition.sections?.[0]?.stories?.[0] ?? null;
+  const newsApiStory =
+    candidateNewsApiStory && storyMatchesCategory(candidateNewsApiStory, id)
+      ? candidateNewsApiStory
+      : null;
   const featuredStory = newsApiStory
     ? {
         ...newsApiStory,
@@ -333,11 +370,13 @@ async function getMixedStoriesForCategory({
       count: gdeltStories.length,
     });
   }
-  const filteredGdelt = featuredStory
-    ? gdeltStories.filter((story) => story.id !== featuredStory.id)
-    : gdeltStories;
-  const mixedStories = featuredStory
-    ? [featuredStory, ...filteredGdelt]
+  const filteredGdelt = gdeltStories.filter((story) => storyMatchesCategory(story, id));
+  const filteredNewsApi =
+    featuredStory && storyMatchesCategory(featuredStory, id)
+      ? [featuredStory]
+      : [];
+  const mixedStories = filteredNewsApi.length
+    ? [...filteredNewsApi, ...filteredGdelt.filter((s) => s.id !== filteredNewsApi[0].id)]
     : filteredGdelt;
 
   console.info("[frontpage] mixedResult", {

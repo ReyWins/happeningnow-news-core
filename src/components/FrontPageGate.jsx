@@ -8,7 +8,7 @@ const EVT = "hn-sections-change";
 const LOAD_TIMEOUT_MS = 60_000;
 const SSR_FRESH_MS = 90_000;
 const CATEGORY_IDS = new Set(CATEGORIES.map((category) => category.id));
-const FRONT_CACHE_PREFIX = "hn_frontpage_cache_v1:";
+const FRONT_CACHE_PREFIX = "hn_frontpage_cache_v2:";
 const FRONT_CACHE_TTL_MS = 2 * 60 * 1000;
 const FRONT_RESET_KEY = "hn_frontpage_cache_reset";
 
@@ -139,8 +139,10 @@ function scoreStoryForCategory(story, category) {
   const keywords = category?.keywords ?? [];
   const domains = category?.domainsPreferred ?? category?.domains ?? [];
   let score = 0;
+  let keywordHits = 0;
   const domain = getDomainFromUrl(story?.url ?? "");
-  if (domains.length && matchesDomain(domain, domains)) score += 3;
+  const domainMatch = domains.length && matchesDomain(domain, domains);
+  if (domainMatch) score += 3;
   if (keywords.length === 0) return score;
   const hay = normalizeText(
     `${story?.title ?? ""} ${story?.summary ?? ""} ${story?.source ?? ""} ${story?.url ?? ""}`
@@ -150,11 +152,18 @@ function scoreStoryForCategory(story, category) {
     const needle = normalizeText(keyword).replace(/[^a-z0-9]+/g, " ").trim();
     if (!needle) return;
     if (needle.includes(" ")) {
-      if (hay.includes(needle)) score += 1;
+      if (hay.includes(needle)) {
+        score += 1;
+        keywordHits += 1;
+      }
       return;
     }
-    if (words.has(needle)) score += 1;
+    if (words.has(needle)) {
+      score += 1;
+      keywordHits += 1;
+    }
   });
+  if (!domainMatch && keywordHits === 0) return 0;
   return score;
 }
 
@@ -166,7 +175,7 @@ function assignStoriesToCategories(stories, labels) {
     labels.forEach((label) => {
       const category = findCategoryByLabel(label);
       const score = scoreStoryForCategory(story, category);
-      const minScore = category?.minScore ?? 1;
+      const minScore = category?.minScore ?? 2;
       if (score >= minScore && score > bestScore) {
         bestScore = score;
         bestLabel = label;
@@ -441,6 +450,7 @@ export default function FrontPageGate({ data }) {
           serverFetchedAt,
         });
       }
+      window.dispatchEvent(new Event("hn-pagewait-done"));
       return;
     }
 
@@ -525,6 +535,7 @@ export default function FrontPageGate({ data }) {
         setTimedOut(true);
       } finally {
         if (!active) return;
+        window.dispatchEvent(new Event("hn-pagewait-done"));
         if (!fetched) {
           console.info("[frontpage] fetch end", { selectedKey, ok: false });
         } else {
@@ -627,7 +638,6 @@ export default function FrontPageGate({ data }) {
         ? assignStoriesToCategories(sections[0]?.stories ?? [], selectedLabels)
         : null;
     const usedIds = new Set();
-    const BORROW_LIMIT = 4;
 
     return selectedLabels.map((label) => {
       const match = findBestSectionMatch(sections, label);
@@ -638,6 +648,14 @@ export default function FrontPageGate({ data }) {
 
       const base = match ?? fallback ?? { label, stories: [] };
       let baseStories = base?.stories ?? [];
+      const category = findCategoryByLabel(label);
+      const minScore = category?.minScore ?? 2;
+      const filteredBaseStories = baseStories.filter(
+        (story) => scoreStoryForCategory(story, category) >= minScore
+      );
+      if (filteredBaseStories.length) {
+        baseStories = filteredBaseStories;
+      }
 
       if (!match && fallback) {
         const assigned = fallbackAssignments?.get(label) ?? [];
@@ -648,16 +666,11 @@ export default function FrontPageGate({ data }) {
       }
 
       if (!baseStories.length) {
-        const borrowed = keywordAssignments?.get(label) ?? [];
-        baseStories = borrowed
-          .filter((story) => !usedIds.has(story.id))
-          .slice(0, BORROW_LIMIT);
-      }
-
-      if (!baseStories.length) {
-        baseStories = allStories
-          .filter((story) => story?.id && !usedIds.has(story.id))
-          .slice(0, BORROW_LIMIT);
+        const assigned = keywordAssignments?.get(label) ?? [];
+        const filteredAssigned = assigned.filter(
+          (story) => scoreStoryForCategory(story, category) >= minScore
+        );
+        baseStories = filteredAssigned;
       }
 
       const uniqueStories = baseStories.filter((story) => {
@@ -700,6 +713,18 @@ export default function FrontPageGate({ data }) {
     const maxStories = Math.max(30, exactThreeSections.length * minPerSection);
     return buildEditionFromThreeSections(exactThreeSections, maxStories);
   }, [exactThreeSections]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const total = editionSections.reduce(
+      (sum, section) => sum + (section.stories?.length || 0),
+      0
+    );
+    try {
+      localStorage.setItem("hn_story_count", String(total));
+      window.dispatchEvent(new Event("hn-story-count"));
+    } catch {}
+  }, [editionSections]);
   const statusMessage =
     sections.length === 0
       ? timedOut

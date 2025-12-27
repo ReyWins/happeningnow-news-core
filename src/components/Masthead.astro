@@ -1,11 +1,16 @@
 ---
-const { meta } = Astro.props;
+const { meta, showPagewait = false } = Astro.props;
+const publishedDate = new Date().toLocaleDateString("en-US", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+});
 import ModeToggle from "./ModeToggle.tsx";
 ---
 
 <header class="masthead">
   <div class="masthead-meta">
-    PUBLISHED {meta.publishDate}
+    Published Date: {publishedDate}
   </div>
 
   <h1 class="masthead-title">HAPPENING NOW</h1>
@@ -62,106 +67,110 @@ import ModeToggle from "./ModeToggle.tsx";
   </div>
 </header>
 
-<div id="pagewait-overlay" class="pagewait" role="status" aria-live="polite" aria-hidden="true">
-  <div class="pagewait-card" tabindex="-1">
-    <div class="pagewait-title">Whats "Happening Now" is loading...</div>
-    <div class="pagewait-bar" aria-hidden="true">
-      <span></span>
+{showPagewait && (
+  <>
+    <div id="pagewait-overlay" class="pagewait" role="status" aria-live="polite" aria-hidden="true">
+      <div class="pagewait-card" tabindex="-1">
+        <div class="pagewait-title">Whats "Happening Now" is loading...</div>
+        <div class="pagewait-bar" aria-hidden="true">
+          <span></span>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<script is:inline>
-  (() => {
-    const overlay = document.getElementById("pagewait-overlay");
-    const card = overlay ? overlay.querySelector(".pagewait-card") : null;
-    const PAGEWAIT_KEY = "hn_pagewait_pending";
-    const TOKEN_KEY = "hn_client_token";
-    let hideTimerId = null;
-    if (!overlay) return;
+    <script is:inline>
+      {`(() => {
+        const overlay = document.getElementById("pagewait-overlay");
+        const card = overlay ? overlay.querySelector(".pagewait-card") : null;
+        const PAGEWAIT_KEY = "hn_pagewait_pending";
+        const TOKEN_KEY = "hn_client_token";
+        let hideTimerId = null;
+        if (!overlay) return;
 
-    const ensureToken = () => {
-      try {
-        const existing = localStorage.getItem(TOKEN_KEY);
-        if (existing) return;
-        const token =
-          (window.crypto && typeof window.crypto.randomUUID === "function")
-            ? window.crypto.randomUUID()
-            : `hn_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
-        localStorage.setItem(TOKEN_KEY, token);
-        document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=31536000`;
-      } catch {}
-    };
+        const ensureToken = () => {
+          try {
+            const existing = localStorage.getItem(TOKEN_KEY);
+            if (existing) return;
+            const token =
+              (window.crypto && typeof window.crypto.randomUUID === "function")
+                ? window.crypto.randomUUID()
+                : \`hn_\${Date.now()}_\${Math.random().toString(16).slice(2, 10)}\`;
+            localStorage.setItem(TOKEN_KEY, token);
+            document.cookie = \`\${TOKEN_KEY}=\${encodeURIComponent(token)}; path=/; max-age=31536000\`;
+          } catch {}
+        };
 
-    const show = () => {
-      overlay.classList.add("show");
-      overlay.setAttribute("aria-hidden", "false");
-      if (card && typeof card.focus === "function") {
-        card.focus({ preventScroll: true });
-      }
-      if (hideTimerId) window.clearTimeout(hideTimerId);
-      hideTimerId = window.setTimeout(() => {
-        hide();
-      }, 8000);
-    };
+        const show = () => {
+          overlay.classList.add("show");
+          overlay.setAttribute("aria-hidden", "false");
+          if (card && typeof card.focus === "function") {
+            card.focus({ preventScroll: true });
+          }
+          if (hideTimerId) window.clearTimeout(hideTimerId);
+          hideTimerId = window.setTimeout(() => {
+            hide();
+          }, 8000);
+        };
 
-    const hide = () => {
-      overlay.classList.remove("show");
-      overlay.setAttribute("aria-hidden", "true");
-      if (hideTimerId) {
-        window.clearTimeout(hideTimerId);
-        hideTimerId = null;
-      }
-    };
+        const hide = () => {
+          overlay.classList.remove("show");
+          overlay.setAttribute("aria-hidden", "true");
+          if (hideTimerId) {
+            window.clearTimeout(hideTimerId);
+            hideTimerId = null;
+          }
+        };
 
-    const markPending = () => {
-      try {
-        sessionStorage.setItem(PAGEWAIT_KEY, String(Date.now()));
-      } catch {}
-    };
+        const markPending = () => {
+          try {
+            sessionStorage.setItem(PAGEWAIT_KEY, String(Date.now()));
+          } catch {}
+        };
 
-    const consumePending = () => {
-      try {
-        const pending = sessionStorage.getItem(PAGEWAIT_KEY);
-        if (!pending) return;
-        sessionStorage.removeItem(PAGEWAIT_KEY);
-        show();
-      } catch {}
-    };
+        const consumePending = () => {
+          try {
+            const pending = sessionStorage.getItem(PAGEWAIT_KEY);
+            if (!pending) return;
+            sessionStorage.removeItem(PAGEWAIT_KEY);
+            show();
+          } catch {}
+        };
 
-    const attach = (link) => {
-      link.addEventListener("click", (event) => {
-        if (
-          event.defaultPrevented ||
-          event.button !== 0 ||
-          event.metaKey ||
-          event.ctrlKey ||
-          event.shiftKey ||
-          event.altKey
-        ) {
-          return;
-        }
-        const href = link.getAttribute("href") || "";
-        if (!href || href === "#") return;
-        if (window.location.pathname === "/" && href === "/") return;
-        markPending();
-      });
-    };
+        const attach = (link) => {
+          link.addEventListener("click", (event) => {
+            if (
+              event.defaultPrevented ||
+              event.button !== 0 ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            ) {
+              return;
+            }
+            const href = link.getAttribute("href") || "";
+            if (!href || href === "#") return;
+            if (window.location.pathname === "/" && href === "/") return;
+            markPending();
+          });
+        };
 
-    document.querySelectorAll("a[data-pagewait]").forEach((link) => attach(link));
-    window.addEventListener("hn-pagewait", () => {
-      markPending();
-      show();
-    });
-    window.addEventListener("hn-pagewait-done", hide);
-    window.addEventListener("pageshow", () => {
-      consumePending();
-    });
-    window.addEventListener("pagehide", hide);
-    consumePending();
-    ensureToken();
-  })();
-</script>
+        document.querySelectorAll("a[data-pagewait]").forEach((link) => attach(link));
+        window.addEventListener("hn-pagewait", () => {
+          markPending();
+          show();
+        });
+        window.addEventListener("hn-pagewait-done", hide);
+        window.addEventListener("pageshow", () => {
+          consumePending();
+        });
+        window.addEventListener("pagehide", hide);
+        consumePending();
+        ensureToken();
+      })();`}
+    </script>
+  </>
+)}
 
 <style>
   .masthead {
@@ -237,6 +246,7 @@ import ModeToggle from "./ModeToggle.tsx";
   }
   .masthead-bar a:hover { text-decoration: underline; }
 
+  ${showPagewait ? `
   .pagewait {
     position: fixed;
     inset: 0;
@@ -297,6 +307,7 @@ import ModeToggle from "./ModeToggle.tsx";
     55% { width: 75%; opacity: 0.9; }
     100% { width: 95%; opacity: 1; }
   }
+  ` : ""}
 
   .quickMenu {
     position: relative;
