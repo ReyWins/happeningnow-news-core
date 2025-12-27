@@ -1,10 +1,24 @@
 ---
 const { story } = Astro.props;
 const floatClass = story.imageFloat === "right" ? "right" : "left";
+const storyId = String(story?.id ?? "");
+const adapterTag = storyId.startsWith("gdelt:")
+  ? "GDELT"
+  : storyId.startsWith("newsapi:")
+    ? "NEWSAPI.AI"
+    : "";
 ---
 
 <article class="story">
   <h2>{story.title}</h2>
+  {(story.source || story.publishDate || adapterTag) && (
+    <div class="story-meta">
+      <span class="meta-label">
+        {[story.source, story.publishDate].filter(Boolean).join(" · ")}
+      </span>
+      {adapterTag && <span class="adapter-tag">{adapterTag}</span>}
+    </div>
+  )}
 
   <div class="content">
     {story.imageUrl && (
@@ -24,6 +38,34 @@ const floatClass = story.imageFloat === "right" ? "right" : "left";
 .story h2 {
   font-size: 18px;
   margin: 4px 0 8px;
+}
+
+.story-meta {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted) 85%, var(--ink) 15%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.story-meta .meta-label:empty {
+  display: none;
+}
+
+.adapter-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  background: color-mix(in srgb, var(--paper) 92%, var(--ink) 8%);
+  color: var(--ink);
 }
 
 .story img {

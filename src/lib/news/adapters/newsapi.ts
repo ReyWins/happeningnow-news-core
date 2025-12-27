@@ -28,12 +28,24 @@ type ErResponse = {
 const EVENTREGISTRY_ENDPOINT = "https://eventregistry.org/api/v1/article/getArticles";
 const ER_CACHE_TTL_MS = 30 * 60 * 1000;
 const erCache = new Map<string, { value: Edition; expiresAt: number }>();
+const NEWSAPI_HARD_LIMIT = 15;
+const NEWSAPI_MAX_KEYWORDS = 12;
+
+function getEnvValue(name: string) {
+  const metaEnv =
+    typeof import.meta !== "undefined" ? (import.meta as { env?: Record<string, string> }).env : undefined;
+  return (
+    (typeof process !== "undefined" ? process.env?.[name] : undefined) ||
+    metaEnv?.[name] ||
+    ""
+  );
+}
 
 function apiKey() {
   return (
-    process.env.NEWSAPI_AI_KEY ||
-    process.env.NEWSAPI_KEY ||
-    process.env.EVENTREGISTRY_API_KEY ||
+    getEnvValue("NEWSAPI_AI_KEY") ||
+    getEnvValue("NEWSAPI_KEY") ||
+    getEnvValue("EVENTREGISTRY_API_KEY") ||
     ""
   );
 }
@@ -46,13 +58,58 @@ function pickDate(article: ErArticle) {
   return article.dateTimePub || article.dateTime || "";
 }
 
-
 function normalizeKeyword(q: string) {
-  return q
-    .replace(/\bAND\b|\bOR\b/gi, " ")
-    .replace(/[()"']/g, "")
-    .replace(/\s+/g, " ")
+  return q.replace(/\bAND\b|\bOR\b/gi, " ").replace(/[()]/g, " ").trim();
+}
+
+function extractKeywordTerms(q: string) {
+  const phrases: string[] = [];
+  const remainder = q.replace(/"([^"]+)"/g, (_, phrase: string) => {
+    phrases.push(cleanText(phrase));
+    return " ";
+  });
+  const normalized = normalizeKeyword(remainder).replace(/[']/g, "");
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  return [...phrases, ...tokens]
+    .map((term) => cleanText(term))
+    .filter((term) => term && !/^(and|or)$/i.test(term));
+}
+
+function dedupeTerms(terms: string[]) {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const term of terms) {
+    const key = term.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(term);
+  }
+  return output;
+}
+
+function capTerms(terms: string[]) {
+  let trimmed = false;
+  let capped = terms;
+  if (capped.length > NEWSAPI_MAX_KEYWORDS) {
+    capped = capped.slice(0, NEWSAPI_MAX_KEYWORDS);
+    trimmed = true;
+  }
+  if (capped.length > NEWSAPI_HARD_LIMIT) {
+    capped = capped.slice(0, NEWSAPI_HARD_LIMIT);
+    trimmed = true;
+  }
+  return { terms: capped, trimmed };
+}
+
+function buildKeywordString(terms: string[]) {
+  return terms
+    .map((term) => (term.includes(" ") ? `"${term}"` : term))
+    .join(" ")
     .trim();
+}
+
+function removeUnitedStates(terms: string[]) {
+  return terms.filter((term) => term.toLowerCase() !== "united states");
 }
 
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
@@ -88,29 +145,47 @@ async function postEventRegistry(payload: unknown) {
 export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   console.info("[newsapi.ai/er] entered", {
     hasQ: Boolean(q),
-    envAI: Boolean(process.env.NEWSAPI_AI_KEY),
-    envKey: Boolean(process.env.NEWSAPI_KEY),
-    envER: Boolean(process.env.EVENTREGISTRY_API_KEY),
+    envAI: Boolean(getEnvValue("NEWSAPI_AI_KEY")),
+    envKey: Boolean(getEnvValue("NEWSAPI_KEY")),
+    envER: Boolean(getEnvValue("EVENTREGISTRY_API_KEY")),
   });
   const key = apiKey();
   console.info("[newsapi.ai/er] apiKey", Boolean(key));
   if (!key) {
     console.info("[newsapi.ai/er] missingKey", {
-      envAI: Boolean(process.env.NEWSAPI_AI_KEY),
-      envKey: Boolean(process.env.NEWSAPI_KEY),
-      envER: Boolean(process.env.EVENTREGISTRY_API_KEY),
+      envAI: Boolean(getEnvValue("NEWSAPI_AI_KEY")),
+      envKey: Boolean(getEnvValue("NEWSAPI_KEY")),
+      envER: Boolean(getEnvValue("EVENTREGISTRY_API_KEY")),
     });
     return { sections: [] };
   }
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  const keyword = normalizeKeyword(rawQuery);
+  const baseTerms = dedupeTerms(extractKeywordTerms(rawQuery));
+  const hasUnitedStatesIndex = baseTerms.findIndex(
+    (term) => term.toLowerCase() === "united states"
+  );
+  if (hasUnitedStatesIndex > 0) {
+    const [us] = baseTerms.splice(hasUnitedStatesIndex, 1);
+    baseTerms.unshift(us);
+  }
+  const capped = capTerms(baseTerms);
+  const keywordTerms = capped.terms;
+  const keyword =
+    buildKeywordString(keywordTerms) || buildKeywordString(baseTerms) || "news";
   const limit = 30;
   const lang = "eng";
   console.info("[newsapi.ai/er] rawQuery", rawQuery);
   console.info("[newsapi.ai/er] keyword", keyword);
+  console.info("[newsapi.ai/er] keywordCount", keywordTerms.length);
+  console.info("[newsapi.ai/er] keywords", keywordTerms);
   console.info("[newsapi.ai/er] queryString", keyword);
-  console.info("[newsapi.ai/er] request", { keyword, lang, limit });
+  console.info("[newsapi.ai/er] request", {
+    keyword,
+    lang,
+    limit,
+    trimmed: capped.trimmed,
+  });
 
   const cacheKey = buildCacheKey(keyword, limit, lang, key);
   const cached = erCache.get(cacheKey);
@@ -138,6 +213,30 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
     returned: raw.length,
     total: json?.articles?.totalResults ?? null,
   });
+
+  if (!raw.length) {
+    const retryTerms = capTerms(removeUnitedStates(baseTerms)).terms;
+    const retryKeyword = buildKeywordString(retryTerms);
+    if (retryKeyword && retryKeyword !== keyword) {
+      console.info("[newsapi.ai/er] retryKeyword", retryKeyword);
+      console.info("[newsapi.ai/er] retryKeywordCount", retryTerms.length);
+      const retryPayload = {
+        ...payload,
+        keyword: retryKeyword,
+      };
+      ({ res, json } = await postEventRegistry(retryPayload));
+      console.info("[newsapi.ai/er] retryStatus", res.status, res.statusText);
+      if (!res.ok || json?.error || json?.errorDescr) {
+        console.warn("[newsapi.ai/er] retryError", json?.error, json?.errorDescr);
+        return { sections: [] };
+      }
+      raw = json?.articles?.results ?? [];
+      console.info("[newsapi.ai/er] retryArticles", {
+        returned: raw.length,
+        total: json?.articles?.totalResults ?? null,
+      });
+    }
+  }
 
   const stories: Story[] = raw.map((article, idx) => {
     const url = article.url ?? "";
