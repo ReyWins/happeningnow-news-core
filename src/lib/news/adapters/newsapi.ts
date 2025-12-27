@@ -27,7 +27,6 @@ type ErResponse = {
 
 const EVENTREGISTRY_ENDPOINT = "https://eventregistry.org/api/v1/article/getArticles";
 const ER_CACHE_TTL_MS = 30 * 60 * 1000;
-const ER_MAX_KEYWORDS = 12;
 const erCache = new Map<string, { value: Edition; expiresAt: number }>();
 
 function apiKey() {
@@ -47,39 +46,11 @@ function pickDate(article: ErArticle) {
   return article.dateTimePub || article.dateTime || "";
 }
 
-function extractKeywords(query: string) {
-  if (!query) return [];
-  const groupMatch = query.match(/\((.*)\)/);
-  const group = groupMatch?.[1] ?? "";
-  return group
-    .split(/\s+OR\s+/i)
-    .map((part) => part.replace(/^"|"$/g, "").trim())
-    .filter(Boolean);
-}
 
-function quoteTerm(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  return trimmed.includes(" ") ? `"${trimmed}"` : trimmed;
-}
-
-function buildErKeywordQuery(rawQuery: string, limit = ER_MAX_KEYWORDS) {
-  const trimmed = rawQuery.trim();
-  if (!trimmed) return { erQuery: trimmed, keywords: [], base: "" };
-  const baseMatch = trimmed.match(/^(.*?)\s+AND\s+\(/i);
-  const base = baseMatch?.[1]?.trim() ?? "";
-  let keywords = extractKeywords(trimmed).map((entry) => entry.trim()).filter(Boolean);
-  keywords = Array.from(new Set(keywords));
-  const limited = keywords.slice(0, limit);
-  const terms = [base, ...limited].filter(Boolean).map(quoteTerm);
-  const erQuery = terms.join(" ");
-  return { erQuery: erQuery || trimmed, keywords: limited, base };
-}
-
-function toEventRegistryKeyword(q: string) {
-  return String(q ?? "")
+function normalizeKeyword(q: string) {
+  return q
     .replace(/\bAND\b|\bOR\b/gi, " ")
-    .replace(/[()]/g, " ")
+    .replace(/[()"]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -105,6 +76,12 @@ async function postEventRegistry(payload: unknown) {
     json = {};
   }
 
+  console.info("[newsapi.ai/er] top keys", Object.keys(json));
+  console.info(
+    "[newsapi.ai/er] results length",
+    json?.articles?.results?.length
+  );
+
   return { res, json };
 }
 
@@ -114,18 +91,12 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   if (!key) return { sections: [] };
 
   const rawQuery = q?.trim() ? q.trim() : "United States";
-  const keywordQuery = toEventRegistryKeyword(rawQuery);
-  const { erQuery: query, keywords, base } = buildErKeywordQuery(
-    keywordQuery,
-    ER_MAX_KEYWORDS
-  );
+  const query = normalizeKeyword(rawQuery);
   const limit = 30;
   const lang = "eng";
-  const keywordCount = keywords.length;
-  console.info("[newsapi.ai/er] keywordCount", keywordCount, "keywords", keywords);
-  console.info("[newsapi.ai/er] queryMode", { rawQuery, keywordQuery, base, query });
-  console.info("[newsapi.ai/er] queryString", query);
-  console.info("[newsapi.ai/er] request", { query, lang, limit, keywordCount });
+  console.info("[newsapi.ai/er] rawQuery", rawQuery);
+  console.info("[newsapi.ai/er] normalizedQuery", query);
+  console.info("[newsapi.ai/er] request", { query, lang, limit });
 
   const cacheKey = buildCacheKey(query, limit, lang, key);
   const cached = erCache.get(cacheKey);
@@ -164,33 +135,6 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
     returned: raw.length,
     total: json?.articles?.totalResults ?? null,
   });
-
-  if (!raw.length && base) {
-    const fallbackTerms = keywords.map(quoteTerm);
-    const fallbackQuery = fallbackTerms.join(" ");
-    if (fallbackQuery) {
-      const retryPayload = {
-        ...payload,
-        query: {
-          $query: {
-            $and: [{ keyword: fallbackQuery }, { lang: "eng" }],
-          },
-        },
-      };
-      console.info("[newsapi.ai/er] retryQuery", fallbackQuery);
-      ({ res, json } = await postEventRegistry(retryPayload));
-      console.info("[newsapi.ai/er] retryStatus", res.status, res.statusText);
-      if (!res.ok || json?.error || json?.errorDescr) {
-        console.warn("[newsapi.ai/er] retryError", json?.error, json?.errorDescr);
-        return { sections: [] };
-      }
-      raw = json?.articles?.results ?? [];
-      console.info("[newsapi.ai/er] retryArticles", {
-        returned: raw.length,
-        total: json?.articles?.totalResults ?? null,
-      });
-    }
-  }
 
   const stories: Story[] = raw.map((article, idx) => {
     const url = article.url ?? "";

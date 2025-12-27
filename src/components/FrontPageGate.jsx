@@ -705,7 +705,11 @@ export default function FrontPageGate({ data }) {
     return buildEditionFromThreeSections(exactThreeSections, maxStories);
   }, [exactThreeSections]);
   const statusMessage =
-    sections.length === 0 && !timedOut ? "Rendering latest stories..." : "";
+    sections.length === 0
+      ? timedOut
+        ? "No stories found — try different categories"
+        : "Rendering latest stories..."
+      : "";
 
   return (
     <FrontPage
