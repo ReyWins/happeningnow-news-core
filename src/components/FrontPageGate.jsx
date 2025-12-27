@@ -321,14 +321,10 @@ function buildEditionFromThreeSections(exactThreeSections, maxStories = 30) {
     0
   );
 
-  const scored = allStories.map((story) => {
-    const popularityPct = getPopularityPct(story.popularity || 0, maxPopularity);
-    const ageHours = getAgeHours(getDateMs(story), nowMs);
-    const breaking =
-      !!story.breaking ||
-      (popularityPct >= BREAKING_MIN_PCT && ageHours <= BREAKING_WINDOW_HOURS);
-    return { ...story, breaking };
-  });
+  const scored = allStories.map((story) => ({
+    ...story,
+    breaking: !!story.breaking,
+  }));
 
   const preferredFeaturedPool = scored.filter((story) => isNewsApiStory(story));
   const featuredPool = preferredFeaturedPool.length ? preferredFeaturedPool : scored;

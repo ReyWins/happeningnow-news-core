@@ -30,6 +30,9 @@ const ER_CACHE_TTL_MS = 30 * 60 * 1000;
 const erCache = new Map<string, { value: Edition; expiresAt: number }>();
 const NEWSAPI_HARD_LIMIT = 15;
 const NEWSAPI_MAX_KEYWORDS = 12;
+const NEWSAPI_SINGLE_SHOT = true;
+const NEWSAPI_PRIMARY_TERMS = 3;
+const NEWSAPI_REGION_BIAS = ["United States", "Northeast"];
 
 function getEnvValue(name: string) {
   const metaEnv =
@@ -52,6 +55,13 @@ function apiKey() {
 
 function cleanText(value = "") {
   return String(value).replace(/\s+/g, " ").trim();
+}
+
+function trimSummary(value = "", maxLength = 200) {
+  const cleaned = cleanText(value);
+  if (!cleaned) return "";
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength).trim()}...`;
 }
 
 function pickDate(article: ErArticle) {
@@ -101,15 +111,55 @@ function capTerms(terms: string[]) {
   return { terms: capped, trimmed };
 }
 
-function buildKeywordString(terms: string[]) {
+function buildKeywordString(terms: string[], quotePhrases = true) {
   return terms
-    .map((term) => (term.includes(" ") ? `"${term}"` : term))
+    .map((term) => (quotePhrases && term.includes(" ") ? `"${term}"` : term))
     .join(" ")
     .trim();
 }
 
 function removeUnitedStates(terms: string[]) {
   return terms.filter((term) => term.toLowerCase() !== "united states");
+}
+
+function selectPrimaryTerms(terms: string[]) {
+  const used = new Set<string>();
+  const output: string[] = [];
+  const lowerTerms = terms.map((term) => term.toLowerCase());
+  const preferredCategoryTerms = terms.filter((term) => term.toLowerCase() !== "united states");
+  const addTerm = (term: string) => {
+    const key = term.toLowerCase();
+    if (used.has(key)) return;
+    used.add(key);
+    output.push(term);
+  };
+
+  NEWSAPI_REGION_BIAS.forEach((term) => {
+    const idx = lowerTerms.indexOf(term.toLowerCase());
+    if (idx !== -1) addTerm(terms[idx]);
+  });
+
+  NEWSAPI_REGION_BIAS.forEach((term) => {
+    if (output.length >= NEWSAPI_PRIMARY_TERMS) return;
+    addTerm(term);
+  });
+
+  preferredCategoryTerms.forEach((term) => {
+    if (output.length >= NEWSAPI_PRIMARY_TERMS) return;
+    addTerm(term);
+  });
+
+  terms.forEach((term) => {
+    if (output.length >= NEWSAPI_PRIMARY_TERMS) return;
+    addTerm(term);
+  });
+
+  if (!output.length) {
+    const base = removeUnitedStates(terms);
+    return (base.length ? base : terms).slice(0, NEWSAPI_PRIMARY_TERMS);
+  }
+
+  return output.slice(0, NEWSAPI_PRIMARY_TERMS);
 }
 
 function buildCacheKey(q: string, limit: number, lang: string, key: string) {
@@ -171,20 +221,28 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
   }
   const capped = capTerms(baseTerms);
   const keywordTerms = capped.terms;
+  const primaryTerms = NEWSAPI_SINGLE_SHOT
+    ? selectPrimaryTerms(keywordTerms)
+    : keywordTerms;
   const keyword =
-    buildKeywordString(keywordTerms) || buildKeywordString(baseTerms) || "news";
+    buildKeywordString(primaryTerms, true) ||
+    buildKeywordString(primaryTerms) ||
+    buildKeywordString(keywordTerms) ||
+    buildKeywordString(baseTerms) ||
+    "news";
   const limit = 30;
   const lang = "eng";
   console.info("[newsapi.ai/er] rawQuery", rawQuery);
   console.info("[newsapi.ai/er] keyword", keyword);
-  console.info("[newsapi.ai/er] keywordCount", keywordTerms.length);
-  console.info("[newsapi.ai/er] keywords", keywordTerms);
+  console.info("[newsapi.ai/er] keywordCount", primaryTerms.length);
+  console.info("[newsapi.ai/er] keywords", primaryTerms);
   console.info("[newsapi.ai/er] queryString", keyword);
   console.info("[newsapi.ai/er] request", {
     keyword,
     lang,
     limit,
     trimmed: capped.trimmed,
+    mode: NEWSAPI_SINGLE_SHOT ? "single_shot" : "retry",
   });
 
   const cacheKey = buildCacheKey(keyword, limit, lang, key);
@@ -213,30 +271,10 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
     returned: raw.length,
     total: json?.articles?.totalResults ?? null,
   });
-
-  if (!raw.length) {
-    const retryTerms = capTerms(removeUnitedStates(baseTerms)).terms;
-    const retryKeyword = buildKeywordString(retryTerms);
-    if (retryKeyword && retryKeyword !== keyword) {
-      console.info("[newsapi.ai/er] retryKeyword", retryKeyword);
-      console.info("[newsapi.ai/er] retryKeywordCount", retryTerms.length);
-      const retryPayload = {
-        ...payload,
-        keyword: retryKeyword,
-      };
-      ({ res, json } = await postEventRegistry(retryPayload));
-      console.info("[newsapi.ai/er] retryStatus", res.status, res.statusText);
-      if (!res.ok || json?.error || json?.errorDescr) {
-        console.warn("[newsapi.ai/er] retryError", json?.error, json?.errorDescr);
-        return { sections: [] };
-      }
-      raw = json?.articles?.results ?? [];
-      console.info("[newsapi.ai/er] retryArticles", {
-        returned: raw.length,
-        total: json?.articles?.totalResults ?? null,
-      });
-    }
+  if (!raw.length && json?.info) {
+    console.info("[newsapi.ai/er] info", json.info);
   }
+
 
   const stories: Story[] = raw.map((article, idx) => {
     const url = article.url ?? "";
@@ -251,7 +289,7 @@ export const newsApiAdapter: NewsAdapter = async ({ q } = {}) => {
       source,
       kicker: "Featured",
       title,
-      summary: "",
+      summary: trimSummary(article.body ?? ""),
       url,
       imageUrl,
       imageFloat: "right",

@@ -7,6 +7,8 @@ import { CATEGORIES, DEFAULT_CATEGORY_IDS } from "../../data/categories";
 const BASE_QUERY = "United States";
 const NEWSAPI_HARD_LIMIT = 15;
 const NEWSAPI_MAX_KEYWORDS = 12;
+const GDELT_MAX_KEYWORDS = 20;
+const GDELT_FALLBACK_KEYWORDS = 6;
 const CATEGORY_QUERY_HINTS: Record<string, string[]> = {
   global: [
     "election",
@@ -104,8 +106,15 @@ function labelForCategory(id: string) {
   return CATEGORIES.find((category) => category.id === id)?.label ?? id;
 }
 
+function getCategoryKeywords(id: string) {
+  const category = CATEGORIES.find((entry) => entry.id === id);
+  const keywords = category?.keywords?.length ? category.keywords : null;
+  if (keywords?.length) return keywords;
+  return CATEGORY_QUERY_HINTS[id] ?? [];
+}
+
 function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
-  const hints = CATEGORY_QUERY_HINTS[id];
+  const hints = getCategoryKeywords(id);
   const baseValue = String(baseQuery ?? "").trim();
   const label = labelForCategory(id);
 
@@ -113,7 +122,8 @@ function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
     return [baseValue, label].filter(Boolean).join(" ").trim();
   }
 
-  const normalized = hints.map((entry) =>
+  const trimmedHints = hints.slice(0, GDELT_MAX_KEYWORDS);
+  const normalized = trimmedHints.map((entry) =>
     entry.includes(" ") ? `"${entry}"` : entry
   );
   const base = baseValue.includes(" ") ? `"${baseValue}"` : baseValue;
@@ -121,6 +131,19 @@ function buildCategoryQuery(id: string, baseQuery = BASE_QUERY) {
   return clause
     ? `${clause} AND (${normalized.join(" OR ")})`
     : `(${normalized.join(" OR ")})`;
+}
+
+function buildGdeltFallbackQuery(id: string, baseQuery = "") {
+  const hints = getCategoryKeywords(id);
+  const label = labelForCategory(id);
+  if (!hints?.length) return label;
+  const trimmedHints = hints.slice(0, GDELT_FALLBACK_KEYWORDS);
+  const normalized = trimmedHints.map((entry) =>
+    entry.includes(" ") ? `"${entry}"` : entry
+  );
+  const baseValue = String(baseQuery ?? "").trim();
+  if (!baseValue) return `(${normalized.join(" OR ")})`;
+  return `${baseValue} AND (${normalized.join(" OR ")})`;
 }
 
 type CategoryQueryBuilder = (id: string, baseQuery: string) => string;
@@ -256,6 +279,77 @@ async function getStoriesFromMock({
   return edition.sections?.[0]?.stories ?? [];
 }
 
+async function getMixedStoriesForCategory({
+  id,
+  baseQuery,
+  ttlMs,
+  newsapiTtlMs,
+  gdeltTtlMs,
+}: {
+  id: string;
+  baseQuery: string;
+  ttlMs: number;
+  newsapiTtlMs?: number;
+  gdeltTtlMs?: number;
+}): Promise<Story[]> {
+  const newsApiQuery = resolveCategoryQuery(buildNewsApiQuery, id, baseQuery);
+  const gdeltQuery = resolveCategoryQuery(buildCategoryQuery, id, baseQuery);
+  const newsApiCacheKey = `frontpage:newsapi-top:${id}:${newsApiQuery}`;
+  const gdeltCacheKey = `frontpage:gdelt:${id}:${gdeltQuery}`;
+
+  const newsApiEdition = await getCachedEdition(
+    newsApiCacheKey,
+    newsapiTtlMs ?? ttlMs,
+    () => newsApiAdapter({ q: newsApiQuery })
+  );
+  const newsApiStory =
+    newsApiEdition.sections?.[0]?.stories?.[0] ?? null;
+  const featuredStory = newsApiStory
+    ? {
+        ...newsApiStory,
+        featured: true,
+        popularity: Math.max(100, Number(newsApiStory.popularity) || 0),
+      }
+    : null;
+
+  const gdeltEdition = await getCachedEdition(
+    gdeltCacheKey,
+    gdeltTtlMs ?? ttlMs,
+    () => gdeltAdapter({ q: gdeltQuery })
+  );
+  let gdeltStories = gdeltEdition.sections?.[0]?.stories ?? [];
+  if (!gdeltStories.length) {
+    const fallbackQuery = buildGdeltFallbackQuery(id, "");
+    const fallbackCacheKey = `frontpage:gdelt-fallback:${id}:${fallbackQuery}`;
+    const fallbackEdition = await getCachedEdition(
+      fallbackCacheKey,
+      gdeltTtlMs ?? ttlMs,
+      () => gdeltAdapter({ q: fallbackQuery })
+    );
+    gdeltStories = fallbackEdition.sections?.[0]?.stories ?? [];
+    console.info("[frontpage] gdeltFallback", {
+      category: id,
+      query: fallbackQuery,
+      count: gdeltStories.length,
+    });
+  }
+  const filteredGdelt = featuredStory
+    ? gdeltStories.filter((story) => story.id !== featuredStory.id)
+    : gdeltStories;
+  const mixedStories = featuredStory
+    ? [featuredStory, ...filteredGdelt]
+    : filteredGdelt;
+
+  console.info("[frontpage] mixedResult", {
+    category: id,
+    newsapiCount: newsApiStory ? 1 : 0,
+    gdeltCount: gdeltStories.length,
+    total: mixedStories.length,
+  });
+
+  return mixedStories;
+}
+
 export async function getFrontPageEdition({
   adapter,
   adapterName,
@@ -307,12 +401,20 @@ export async function getFrontPageEdition({
               ttlMs,
               id,
             })
-          : await getStoriesForCategory({
-              id,
-              baseQuery,
-              ttlMs,
-              adapters: fallbackAdapters,
-            });
+          : adapterName === "newsapi"
+            ? await getMixedStoriesForCategory({
+                id,
+                baseQuery,
+                ttlMs,
+                newsapiTtlMs: ttlMs,
+                gdeltTtlMs: fallbackTtlMs ?? ttlMs,
+              })
+            : await getStoriesForCategory({
+                id,
+                baseQuery,
+                ttlMs,
+                adapters: fallbackAdapters,
+              });
       return { id, stories };
     })
   );
@@ -321,7 +423,11 @@ export async function getFrontPageEdition({
     const id = ids[idx];
     const label = labelForCategory(id);
     if (result.status === "fulfilled") {
-      return { label, stories: result.value.stories };
+      const stories = result.value.stories.map((story) => ({
+        ...story,
+        kicker: label,
+      }));
+      return { label, stories };
     }
     return { label, stories: [] };
   });

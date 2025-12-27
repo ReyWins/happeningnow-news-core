@@ -14,6 +14,8 @@ export default defineConfig({
   integrations: [
     react(),
     keystatic(),
-    icon()
+    icon({
+      iconDir: "public/icons",
+    })
   ]
 });

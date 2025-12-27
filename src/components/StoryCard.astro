@@ -1,4 +1,6 @@
 ---
+import { CATEGORIES } from "../data/categories";
+
 const { story } = Astro.props;
 const floatClass = story.imageFloat === "right" ? "right" : "left";
 const storyId = String(story?.id ?? "");
@@ -7,6 +9,12 @@ const adapterTag = storyId.startsWith("gdelt:")
   : storyId.startsWith("newsapi:")
     ? "NEWSAPI.AI"
     : "";
+const categoryId =
+  CATEGORIES.find((category) => category.label === story?.kicker)?.id ??
+  "default";
+const fallbackIcon = `/icons/${categoryId}.svg`;
+const imageSrc = story.imageUrl || fallbackIcon;
+const imagePlaceholder = !story.imageUrl;
 ---
 
 <article class="story">
@@ -21,9 +29,13 @@ const adapterTag = storyId.startsWith("gdelt:")
   )}
 
   <div class="content">
-    {story.imageUrl && (
-      <img src={story.imageUrl} class={floatClass} alt="" />
-    )}
+    <img
+      src={imageSrc}
+      class={`${floatClass} ${imagePlaceholder ? "placeholder" : ""}`}
+      alt=""
+      loading="lazy"
+      onerror={`if (!this.dataset.fallback) { this.dataset.fallback = "true"; this.src = "${fallbackIcon}"; this.classList.add("placeholder"); }`}
+    />
     <p>{story.summary}</p>
   </div>
 
@@ -74,6 +86,12 @@ const adapterTag = storyId.startsWith("gdelt:")
   object-fit: cover;
   border: 1px solid var(--rule);
   margin: 2px 10px 6px 0;
+}
+
+.story img.placeholder {
+  object-fit: contain;
+  background: color-mix(in srgb, var(--paper) 88%, var(--ink) 4%);
+  padding: 8px;
 }
 
 .story img.right {

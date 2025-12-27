@@ -84,6 +84,16 @@ function findCategoryByLabel(label) {
   return CATEGORY_MAP.get(normalizeKey(label)) ?? null;
 }
 
+function getCategoryIconPath(label) {
+  const category = findCategoryByLabel(label);
+  const id = category?.id ?? "default";
+  return `/icons/${id}.svg`;
+}
+
+function isNewsApiStory(story) {
+  return String(story?.id ?? "").startsWith("newsapi:");
+}
+
 function scoreStoryForCategory(story, category) {
   const keywords = category?.keywords ?? [];
   const domains = category?.domainsPreferred ?? category?.domains ?? [];
@@ -707,11 +717,13 @@ export default function FrontPage(props) {
       (s) => s.kicker === label && !usedIds.has(s.id)
     );
     if (!pool.length) return null;
-    const breaking = pool.find((s) => s.breaking);
+    const preferred = pool.filter(isNewsApiStory);
+    const workingPool = preferred.length ? preferred : pool;
+    const breaking = workingPool.find((s) => s.breaking);
     if (breaking) return breaking;
-    const featuredStory = pool.find((s) => s.featured);
+    const featuredStory = workingPool.find((s) => s.featured);
     if (featuredStory) return featuredStory;
-    return pool.slice().sort(byPopularityThenDate)[0] ?? null;
+    return workingPool.slice().sort(byPopularityThenDate)[0] ?? null;
   };
 
   const topStories = useMemo(() => {
@@ -818,19 +830,27 @@ export default function FrontPage(props) {
     [displayedStories, usedTopIds]
   );
 
+  const moreSourcePool = useMemo(() => {
+    if (mode === "bookmarks") return morePool;
+    const gdeltOnly = morePool.filter(
+      (story) => String(story?.id ?? "").startsWith("gdelt:")
+    );
+    return gdeltOnly.length ? gdeltOnly : morePool;
+  }, [mode, morePool]);
+
   const maxPopularity = useMemo(
     () =>
-      displayedStories.reduce((max, s) => {
+      moreSourcePool.reduce((max, s) => {
         const pop = Number(s.popularity) || 0;
         return pop > max ? pop : max;
       }, 0),
-    [displayedStories]
+    [moreSourcePool]
   );
 
   const popularityCutoff = maxPopularity * 0.5;
 
   const moreStories = useMemo(() => {
-    const base = morePool.filter(
+    const base = moreSourcePool.filter(
       (s) => (Number(s.popularity) || 0) < popularityCutoff
     );
     const filtered = showBookmarksOnly
@@ -1015,7 +1035,10 @@ export default function FrontPage(props) {
       {moreStories.length > 0 ? (
         <section className="moreSection" aria-label="More stories by popularity">
           <div className="moreHeader">
-            <div className="moreTitle">More stories</div>
+            <div className="moreTitle">
+              More stories
+              <span className="sourceTag">Source: GDELT / NEWSAPI.AI</span>
+            </div>
             <div className="moreMeta">Showing popularity &lt; 50% of top</div>
           </div>
           {isPageLoading ? (
@@ -1153,6 +1176,7 @@ export default function FrontPage(props) {
           margin: 0 0 10px;
           font-size: 18px;
           line-height: 1.35;
+          text-wrap: balance;
         }
 
         .storyMeta {
@@ -1180,6 +1204,20 @@ export default function FrontPage(props) {
           color: var(--ink);
         }
 
+        .sourceTag {
+          display: inline-flex;
+          align-items: center;
+          margin-left: 10px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          border: 1px solid var(--rule);
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          background: color-mix(in srgb, var(--paper) 92%, var(--ink) 8%);
+          color: var(--ink);
+        }
+
         .frontpage .content,
         .moreGrid .content {
           display: flow-root;
@@ -1196,17 +1234,25 @@ export default function FrontPage(props) {
         .frontpage .thumb,
         .moreGrid .thumb {
           width: 100%;
-          max-height: 220px;
+          max-height: 260px;
           object-fit: cover;
           border: 1px solid var(--rule);
           background: #f5f5f5;
+        }
+
+        .frontpage .thumb.placeholder,
+        .moreGrid .thumb.placeholder {
+          object-fit: contain;
+          background: color-mix(in srgb, var(--paper) 88%, var(--ink) 4%);
+          padding: 12px;
         }
 
         .frontpage .p,
         .moreGrid .p {
           margin: 0;
           color: var(--ink);
-          line-height: 1.6;
+          line-height: 1.65;
+          text-wrap: pretty;
         }
 
         .readMore {
@@ -1503,15 +1549,15 @@ export default function FrontPage(props) {
           .frontpage .thumb.left,
           .moreGrid .thumb.left {
             float: left;
-            width: 44%;
-            max-width: 230px;
+            width: 52%;
+            max-width: 280px;
             margin: 2px 10px 6px 0;
           }
           .frontpage .thumb.right,
           .moreGrid .thumb.right {
             float: right;
-            width: 44%;
-            max-width: 230px;
+            width: 52%;
+            max-width: 280px;
             margin: 2px 0 6px 10px;
           }
         }
@@ -1596,6 +1642,9 @@ const Story = React.memo(function Story({ story, bookmarks, handleBookmarkToggle
   const placeholderState = story.placeholderState;
   const floatClass = story.imageFloat === "right" ? "right" : "left";
   const hideImage = !!story.isPlaceholder;
+  const fallbackIcon = getCategoryIconPath(story?.kicker);
+  const imageSrc = story.imageUrl || fallbackIcon;
+  const imageIsPlaceholder = !story.imageUrl;
 
   if (isPlaceholder && placeholderState === "loading") {
     return (
@@ -1667,12 +1716,19 @@ const Story = React.memo(function Story({ story, bookmarks, handleBookmarkToggle
       ) : null}
 
       <div className="content">
-        {!hideImage && story.imageUrl ? (
+        {!hideImage ? (
           <img
-            className={`thumb ${floatClass}`}
-            src={story.imageUrl}
+            className={`thumb ${floatClass} ${imageIsPlaceholder ? "placeholder" : ""}`}
+            src={imageSrc}
             alt=""
             loading="lazy"
+            onError={(event) => {
+              const target = event.currentTarget;
+              if (target.dataset.fallback === "true") return;
+              target.dataset.fallback = "true";
+              target.src = fallbackIcon;
+              target.classList.add("placeholder");
+            }}
           />
         ) : null}
         {story.summary ? (
